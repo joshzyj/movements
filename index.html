@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+    <title>Oxford Model</title>
+    <script src="agentscript/lib/agentscript.js"></script>
+    <script src="agentscript/tools/coffee-script.js"></script>
+    <script src="lib/jquery.js"></script>
+    <script src="lib/jquery.flot.js"></script>
+    <script src="lib/jquery.flot.categories.js"></script>
+    <script type="text/coffeescript">
+    # This is Epsteins model of protest
+    
+    u = ABM.util # ABM.util alias, u.s is also ABM.shapes accessor.
+    log = (object) -> console.log object
+    class Model extends ABM.Model
+      setup: ->
+        @agentBreeds ["citizens", "cops"], Agent
+        @citizenDensity = 0.7
+        @copDensity = 0.04
+        @size = 0.9
+        
+        # Shape to bitmap for better performance.
+        @citizens.setUseSprites()
+        # Set animation to 30fps, without multiple steps per draw:
+        @anim.setRate 20, false
+
+        for patch in @patches.create()
+          patch.color = u.randomGray([], 224, 255)
+
+        @patches.cacheAgentsHere() # TODO consider making default
+
+        space = @patches.length
+
+        nono = 0
+        for citizen in @citizens.create @citizenDensity * space
+          citizen.model = this # needs to be added to model initiation TODO see if needed
+          citizen.size = @size
+          citizen.shape = "person"
+          citizen.setColor("green")
+          citizen.moveToRandomEmptyLocation()
+
+          if nono < 10
+            nono += 1
+
+          citizen.regimeLegitimacy = 0.8
+          citizen.threshold = 0.0
+          citizen.hardship = u.randomFloat()
+          citizen.riskAversion = u.randomFloat()
+          citizen.active = false
+          citizen.prisonSentence = 0
+
+          citizen.grievance = ->
+            @hardship * (1 - @regime_legitimacy)
+
+          citizen.arrestProbability = ->
+            cops = 0
+            actives = 1
+      
+            for agent in @neighbors
+              if agent.breed.name is "cops"
+                cops += 1
+              else if agent.breed.name is "citizen" and agent.active
+                actives += 1
+
+            1 - Math.exp(-2.3 * cops / actives)
+
+          citizen.netRisk = ->
+            @arrestProbability * @riskAversion
+
+          citizen.imprison = (sentence) ->
+            @prisonSentence = sentence
+            @losePosition()
+
+          citizen.imprisoned = ->
+            @prisonSentence > 0
+
+          citizen.activate = ->
+            if @grievance - @netRisk > @threshold
+              @active = true
+            else
+              @active = false
+
+          citizen.act = ->
+            if @imprisoned?
+              @prisonSentence -= 1
+              if !@imprisoned? # just released
+                @moveToRandomEmptyLocation()
+            if !@imprisoned? # just released included
+              @moveToRandomEmptyNeighbor()
+              @activate()
+
+        for cop in @cops.create @copDensity * space
+          cop.model = this
+          cop.size = @size
+          cop.shape = "person"
+          cop.setColor("blue")
+          cop.moveToRandomEmptyLocation()
+  
+          cop.maxPrisonSentence = 4
+
+          cop.makeArrest = ->
+            protester = @patch.neighbors.sample((agent) ->
+              agent.breed.name is "citizens" and agent.active?)
+            if protester
+              protester.imprison(u.randomInt(1, @max_prison_sentence))
+
+          cop.act = ->
+            @moveToRandomEmptyNeighbor()
+            @makeArrest()
+
+      step: ->  # called by Model.animate
+        # First, update our citizens via `updateCitizens` below
+        for agent in @agents
+          agent.act()
+
+        @spriteSheet()
+
+      spriteSheet: ->
+        if @anim.draws is 2 # Show the sprite sheet if there is one after first draw
+          sheet = u.last(u.s.spriteSheets) if u.s.spriteSheets.length isnt 0
+          if sheet?
+            log sheet
+            document.getElementById("play").appendChild(sheet.canvas)
+
+    class Agent extends ABM.Agent
+      setColor: (color) ->
+        if u.isString color
+          @color = u.colorFromString(color)
+        else
+          @color = color
+        @sprite = null
+
+      moveToRandomEmptyLocation: ->
+        @moveTo(@model.patches.sample((patch) -> patch.empty()))
+
+      moveToRandomEmptyNeighbor: ->
+        empty = @patch.neighbors.sample((patch) -> patch.empty())
+        if empty
+          @moveTo(empty)
+
+    window.model = new Model({
+      div: "layers",
+      size: 20,
+      minX: -20,
+      maxX: 20,
+      minY: -20,
+      maxY: 20,
+      isTorus: true,
+      hasNeighbors: true
+    })
+    .debug() # Debug: Put Model vars in global name space
+    .start() # Run model immediately after startup initialization
+    
+    </script>
+  </head>
+  <body>
+    <div id="layers"></div>
+    <div id="play" style="float: right;"></div>
+  </body>
+</html>
