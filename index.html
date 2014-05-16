@@ -23,8 +23,7 @@
         
         # Shape to bitmap for better performance.
         @citizens.setUseSprites()
-        # Set animation to 30fps, without multiple steps per draw:
-        @anim.setRate 20, false
+        @animator.setRate 20, false
 
         for patch in @patches.create()
           patch.color = u.randomGray([], 224, 255)
@@ -33,7 +32,6 @@
 
         space = @patches.length
 
-        nono = 0
         for citizen in @citizens.create @citizenDensity * space
           citizen.model = this # needs to be added to model initiation TODO see if needed
           citizen.size = @size
@@ -41,24 +39,21 @@
           citizen.setColor("green")
           citizen.moveToRandomEmptyLocation()
 
-          if nono < 10
-            nono += 1
-
           citizen.regimeLegitimacy = 0.8
-          citizen.threshold = 0.0
+          citizen.threshold = 0.15
           citizen.hardship = u.randomFloat()
           citizen.riskAversion = u.randomFloat()
           citizen.active = false
           citizen.prisonSentence = 0
 
           citizen.grievance = ->
-            @hardship * (1 - @regime_legitimacy)
+            @hardship * (1 - @regimeLegitimacy)
 
           citizen.arrestProbability = ->
             cops = 0
             actives = 1
       
-            for agent in @neighbors
+            for agent in @neighbors()
               if agent.breed.name is "cops"
                 cops += 1
               else if agent.breed.name is "citizen" and agent.active
@@ -67,7 +62,7 @@
             1 - Math.exp(-2.3 * cops / actives)
 
           citizen.netRisk = ->
-            @arrestProbability * @riskAversion
+            @arrestProbability() * @riskAversion
 
           citizen.imprison = (sentence) ->
             @prisonSentence = sentence
@@ -77,17 +72,19 @@
             @prisonSentence > 0
 
           citizen.activate = ->
-            if @grievance - @netRisk > @threshold
+            if @grievance() - @netRisk() > @threshold
               @active = true
+              @setColor("red")
             else
               @active = false
+              @setColor("green")
 
           citizen.act = ->
-            if @imprisoned?
+            if @imprisoned()
               @prisonSentence -= 1
-              if !@imprisoned? # just released
+              if !@imprisoned() # just released
                 @moveToRandomEmptyLocation()
-            if !@imprisoned? # just released included
+            if !@imprisoned() # just released included
               @moveToRandomEmptyNeighbor()
               @activate()
 
@@ -101,24 +98,49 @@
           cop.maxPrisonSentence = 4
 
           cop.makeArrest = ->
-            protester = @patch.neighbors.sample((agent) ->
-              agent.breed.name is "citizens" and agent.active?)
+            protesters = 0
+            passives = 0
+            for agent in @neighbors()
+              if agent.breed.name is "citizens" and agent.active
+                protesters += 1
+              else
+                passives += 1
+
+            protester = @neighbors().sample((agent) ->
+              agent.breed.name is "citizens" and agent.active)
             if protester
-              protester.imprison(u.randomInt(1, @max_prison_sentence))
+              protester.imprison(1 + u.randomInt(@maxPrisonSentence))
 
           cop.act = ->
             @moveToRandomEmptyNeighbor()
             @makeArrest()
 
+        @ui = new UI(this, plotDiv: "#graph")
+
+      prisoners: ->
+        prisoners = []
+        for citizen in @citizens
+          if citizen.imprisoned()
+            prisoners.push citizen
+        prisoners
+
+      actives: ->
+        actives = []
+        for citizen in @citizens
+          if citizen.active and not citizen.imprisoned()
+            actives.push citizen
+        actives
+
       step: ->  # called by Model.animate
-        # First, update our citizens via `updateCitizens` below
+        @agents.shuffle()
         for agent in @agents
           agent.act()
+        @ui.drawPlot()
 
         @spriteSheet()
 
       spriteSheet: ->
-        if @anim.draws is 2 # Show the sprite sheet if there is one after first draw
+        if @animator.draws is 2 # Show the sprite sheet if there is one after first draw
           sheet = u.last(u.s.spriteSheets) if u.s.spriteSheets.length isnt 0
           if sheet?
             log sheet
@@ -140,23 +162,81 @@
         if empty
           @moveTo(empty)
 
+    class UI
+      constructor: (model, options = {}) ->
+        @model = model
+        @plotDiv = $(options.plotDiv)
+        @plotOptions = {
+          series: {
+            bars: {
+              show: true,
+              barWidth: 0.6,
+              align: "center",
+              color: "black"
+            }
+          },
+          xaxis: {
+            show: false,
+          },
+          yaxis: {
+            min: 0
+          }
+        }
+        @plotRioters = []
+        @plotRioters.push({color: "green", data: [[1, 10]]})
+        @plotRioters.push({color: "red", data: [[0, 10]]})
+        @plotRioters.push({color: "black", data: [[2, 10]]})
+        @plotRioters.push({color: "blue", data: [[3, 10]]})
+        @resetPlot()
+
+      resetPlot: ->
+        @plotter = $.plot(@plotDiv, @plotRioters, @plotOptions)
+        @drawPlot()
+
+      drawPlot: ->
+        @plotRioters.data = []
+        citizens = @model.citizens.length
+        actives = @model.actives().length
+        prisoners = @model.prisoners().length
+        passives = citizens - actives - prisoners
+        cops = @model.cops.length
+        @plotRioters[0].data = [[0, passives]]
+        @plotRioters[1].data = [[1, actives]]
+        @plotRioters[2].data = [[2, prisoners]]
+        @plotRioters[3].data = [[3, cops]]
+        @plotter.setData(@plotRioters)
+        @plotter.setupGrid()
+        @plotter.draw()
+
+    mapRadius = 20
     window.model = new Model({
       div: "layers",
       size: 20,
-      minX: -20,
-      maxX: 20,
-      minY: -20,
-      maxY: 20,
+      minX: -1 * mapRadius,
+      maxX: mapRadius,
+      minY: -1 * mapRadius,
+      maxY: mapRadius,
       isTorus: true,
       hasNeighbors: true
-    })
-    .debug() # Debug: Put Model vars in global name space
-    .start() # Run model immediately after startup initialization
+    }).debug().once() # Debug: Put Model vars in global name space
     
     </script>
   </head>
   <body>
     <div id="layers"></div>
     <div id="play" style="float: right;"></div>
+    <div id="graph" style="float: right; width: 500px; height: 200px;"></div>
+
+    <h3>Usage</h3>
+    <ul>
+      <li><i>Start/Pause simulation</i> to run it</li>
+      <li><i>Next generation</i> for stepwise</li>
+      <li><i>Restart</i> resets it</li>
+    </ul>
+    <p>
+      <input type="button" id="start" value="Start simulation" onclick="model.start();" /> 
+      <input type="button" value="Step generation" onclick="model.once();" />
+      <input type="button" value="Stop" onclick="model.stop();" />
+    </p>
   </body>
 </html>
