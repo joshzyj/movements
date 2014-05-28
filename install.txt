@@ -1,9 +1,13 @@
-To make a build install
+There is no need to install anything if you just want to run 
+or edit the model.
 
-git clone git@github.com:backspaces/agentscript.git
+If you want to make changes to Agentscript you need to remove the
+agentscript directory, and then:
+
+git clone git@github.com:wybo/agentscript.git
 cd agentscript
 npm install
 
-To edit/change AgentScript (in agentscript/src) run:
+To then edit/change AgentScript (in agentscript/src) run:
 
 cake watch (from the agentscript dir)
