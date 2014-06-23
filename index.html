@@ -43,8 +43,6 @@
           else
             patch.color = u.randomGray(224, 255)
 
-        @patches.cacheAgentsHere() # TODO consider making default
-
         space = @patches.length
 
         for citizen in @citizens.create @citizenDensity * space
@@ -220,9 +218,7 @@
 
     class UI
       constructor: (model, options = {}) ->
-        console.log 'constructor'
         @model = model
-        console.log @model.type
         @plotDiv = $(options.plotDiv)
         @plotOptions = {
           series: {
@@ -241,7 +237,6 @@
         @plotRioters.push({color: "black", data: []})
         @plotRioters.push({color: "blue", data: []})
         if @model.type is ABM.TYPES.micro
-          console.log 'orangmico'
           @plotRioters.push({color: "orange", data: []})
         @resetPlot()
 
@@ -268,7 +263,6 @@
         @plotter.draw()
 
     window.initialize = (type) ->
-      console.log type
       mapRadius = 20
       window.model = new Model({
         div: "model",

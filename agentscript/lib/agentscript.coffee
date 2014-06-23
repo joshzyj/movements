@@ -500,22 +500,55 @@ ABM.util = u =
   
   # Return angle in [-pi, pi] radians from point1 to point2
   # [See: Math.atan2](http://goo.gl/JS8DF)
-  radiansToward: (point1, point2) ->
+  radiansToward: (point1, point2, patches) ->
+    if patches.isTorus
+      @radiansTowardTorus point1, point2, patches
+    else
+      @radiansTowardEuclidian point1, point2
+
+  # Euclidian radians toward
+  radiansTowardEuclidian: (point1, point2) ->
     Math.atan2 point2.y - point1.y, point2.x - point1.x
+
+  # Return the angle from x1, y1 to x2, y2 on torus using shortest reflection.
+  radiansTowardTorus: (point1, point2, patches) ->
+    closest = @closestTorusPoint point1, point2, patches.numX, patches.numY
+    @radiansTowardEuclidian point1, closest
 
   # Return true if point2 is in cone radians around heading radians from 
   # point1.x, point2.x and within distance radius from point1.x,
-  # point2.x.
-  # I.e. is point2 in cone/heading/radius from point1?
-  inCone: (heading, cone, radius, point1, point2) ->
-    if radius < @distance point1, point2
+  # point2.x. I.e. is point2 in cone/heading/radius from point1?
+  inCone: (heading, cone, radius, point1, point2, patches) ->
+    if patches.isTorus
+      u.inConeTorus(heading, cone, radius, point1, point2, patches)
+    else
+      u.inConeEuclidian(heading, cone, radius, point1, point2)
+
+  # inCone for euclidian distance
+  inConeEuclidian: (heading, cone, radius, point1, point2) ->
+    if radius < @distanceEuclidian point1, point2
       return false
 
-    angle = @radiansToward point1, point2 # angle from 1 to 2
+    angle = @radiansTowardEuclidian point1, point2 # angle from 1 to 2
     cone / 2 >= Math.abs @substractRadians(heading, angle)
 
+  # Return true if point2 is in cone radians around heading radians from 
+  # point1.x, point2.x and within distance radius from point1.x, point2.x
+  # considering all torus reflections.
+  inConeTorus: (heading, cone, radius, point1, point2, patches) ->
+    for point in @torus4Points point1, point2, patches.numX, patches.numY
+      return true if @inConeEuclidian heading, cone, radius, point1, point
+    false
+
+  # Return the distance between point1 and 2
+  distance: (point1, point2, patches) ->
+    if patches.isTorus
+      @distanceTorus(point1, point2, patches)
+    else
+      @distanceEuclidian(point1, point2)
+
   # Return the Euclidean distance between point1 and 2
-  distance: (point1, point2) ->
+  distanceEuclidian: (point1, point2) ->
     distanceX = point1.x - point2.x
     distanceY = point1.y - point2.y
     Math.sqrt distanceX * distanceX + distanceY * distanceY
@@ -545,11 +578,11 @@ ABM.util = u =
   #     -----+---------------+-----
   #      B3  |           B2  |
   #          |               |
-  torusDistance: (point1, point2, width, height) ->
+  distanceTorus: (point1, point2, patches) ->
     xDistance = Math.abs point2.x - point1.x
     yDistance = Math.abs point2.y - point1.y
-    minX = Math.min xDistance, width - xDistance
-    minY = Math.min yDistance, height - yDistance
+    minX = Math.min xDistance, patches.numX - xDistance
+    minY = Math.min yDistance, patches.numY - yDistance
     Math.sqrt minX * minX + minY * minY
 
   # Return 4 torus point reflections of point2 around point1
@@ -588,19 +621,6 @@ ABM.util = u =
       yReflected = point2.y - height
 
     [xReflected, yReflected]
-
-  # Return the angle from x1, y1 to x2, y2 on torus using shortest reflection.
-  torusRadiansToward: (point1, point2, width, height) ->
-    closest = @closestTorusPoint point1, point2, width, height
-    @radiansToward point1, closest
-
-  # Return true if point2 is in cone radians around heading radians from 
-  # point1.x, point2.x and within distance radius from point1.x, point2.x
-  # considering all torus reflections.
-  inTorusCone: (heading, cone, radius, point1, point2, width, height) ->
-    for point in @torus4Points point1, point2, width, height
-      return true if @inCone heading, cone, radius, point1, point
-    false
 
   # ### File I/O
 
@@ -866,14 +886,14 @@ ABM.util = u =
   typedToJS: (typedArray) ->
     (i for i in typedArray)
 
-# An **BreedSet** is an array, along with a class, agentClass, whose instances
+# A **Set** is an array, along with a class, agentClass, whose instances
 # are the items of the array.  Instances of the class are created
-# by the `create` factory method of an BreedSet.
+# by the `create` factory method of a Set.
 #
 # It is a subclass of `Array` and is the base class for
-# `Patches`, `Agents`, and `Links`. An BreedSet keeps track of all
+# `Patches`, `Agents`, and `Links`. A Set keeps track of all
 # its created instances.  It also provides, much like the **ABM.util**
-# module, many methods shared by all subclasses of BreedSet.
+# module, many methods shared by all subclasses of Set.
 #
 # ABM contains three agentsets created by class Model:
 #
@@ -883,7 +903,7 @@ ABM.util = u =
 #
 # See NetLogo [documentation](http://ccl.northwestern.edu/netlogo/docs/)
 # for explanation of the overall semantics of Agent Based Modeling
-# used by BreedSets as well as Patches, Agents, and Links.
+# used by Sets as well as Patches, Agents, and Links.
 #
 # Note: subclassing `Array` can be dangerous and we may have to convert
 # to a different style. See Trevor Burnham's [comments](http://goo.gl/Lca8g)
@@ -891,18 +911,18 @@ ABM.util = u =
 #
 # Because we are an array subset, @[i] == this[i] == agentset[i]
 
-class ABM.BreedSet extends Array
+class ABM.Set extends Array
   # ### Static members
   
   # `asSet` is a static wrapper function converting an array of agents into
-  # an `BreedSet` .. except for the ID which only impacts the add method.
-  # It is primarily used to turn a comprehension into an BreedSet instance
+  # an `Set` .. except for the ID which only impacts the add method.
+  # It is primarily used to turn a comprehension into a Set instance
   # which then gains access to all the methods below.  Ex:
   #
   #     evens = (a for a in ABM.agents when a.id % 2 is 0)
-  #     ABM.BreedSet.asSet(evens)
+  #     ABM.Set.asSet(evens)
   #     randomEven = evens.random()
-  @asSet: (a, setType = ABM.BreedSet) ->
+  @asSet: (a, setType = ABM.Set) ->
     a.__proto__ = setType.prototype ? setType.constructor.prototype # setType.__proto__
     a
   
@@ -911,13 +931,13 @@ class ABM.BreedSet extends Array
   #
   #     AS = for i in [1..5] # long form comprehension
   #       {id:i, x:u.randomInt(10), y:u.randomInt(10)}
-  #     ABM.BreedSet.asSet AS # Convert AS to BreedSet in place
+  #     ABM.Set.asSet AS # Convert AS to Set in place
   #        [{id: 1, x: 0, y: 1}, {id: 2, x: 8, y: 0}, {id: 3, x: 6, y: 4},
   #         {id: 4, x: 1, y: 3}, {id: 5, x: 1, y: 1}]
 
   # ### Constructor and add/remove agents.
   
-  # Create an empty `BreedSet` and initialize the `ID` counter for add().
+  # Create an empty `Set` and initialize the `ID` counter for add().
   # If mainSet is supplied, the new agentset is a sub-array of mainSet.
   # This sub-array feature is how breeds are managed, see class `Model`
   constructor: (agentClass, name, mainSet) ->
@@ -972,7 +992,7 @@ class ABM.BreedSet extends Array
       @ownVariables.push name
     @
 
-  # Move an agent from its BreedSet/breed to be in this BreedSet/breed.
+  # Move an agent from its Set/breed to be in this Set/breed.
   # REMIND: match NetLogo sematics in terms of own variables.
   setBreed: (a) -> # change agent a to be in this breed
     u.remove a.breed, a
@@ -1018,15 +1038,15 @@ class ABM.BreedSet extends Array
   # Remove adjacent duplicates, by reference.
   #
   #     as = (AS.random() for i in [1..4]) # 4 random agents w/ dups
-  #     ABM.BreedSet.asSet as # [{id: 1, x: 8, y: 0}, {id: 0, x: 0, y: 1},
+  #     ABM.Set.asSet as # [{id: 1, x: 8, y: 0}, {id: 0, x: 0, y: 1},
   #                              {id: 0, x: 0, y: 1}, {id: 2, x: 6, y: 4}]
   #     as.uniq() # [{id: 0, x: 0, y: 1}, {id: 1, x: 8, y: 0}, 
   #                  {id: 2, x: 6, y: 4}]
   uniq: -> u.uniq(@)
 
-  # The static `ABM.BreedSet.asSet` as a method.
+  # The static `ABM.Set.asSet` as a method.
   # Used by agentset methods creating new agentsets.
-  asSet: (a, setType = @) -> ABM.BreedSet.asSet a, setType # setType = ABM.BreedSet
+  asSet: (a, setType = @) -> ABM.Set.asSet a, setType # setType = ABM.Set
 
   # Similar to above but sorted via `id`.
   asOrderedSet: (a) -> @asSet(a).sort("id")
@@ -1053,7 +1073,7 @@ class ABM.BreedSet extends Array
   # This is generally used via: getProp, modify results, setProp
   #
   #     # increment x for agents with x=1
-  #     AS1 = ABM.BreedSet.asSet AS.getPropWith("x", 1)
+  #     AS1 = ABM.Set.asSet AS.getPropWith("x", 1)
   #     AS1.setProp "x", 2 # {id: 4, x: 2, y: 3}, {id: 5, x: 2, y: 1}
   #
   # Note this changes the last two objects in the original AS above
@@ -1117,9 +1137,11 @@ class ABM.BreedSet extends Array
   # 
   #     AS.min("x") # {id: 0, x: 0, y: 1}
   #     AS.max((a) -> a.x + a.y, true) # {id: 2, x: 6, y: 4}, 10
-  min: (f, valueToo = false) -> u.min @, f, valueToo
+  min: (f, valueToo = false) ->
+    u.min @, f, valueToo
 
-  max: (f, valueToo = false) -> u.max @, f, valueToo
+  max: (f, valueToo = false) ->
+    u.max @, f, valueToo
 
   # ### Drawing
   
@@ -1140,36 +1162,6 @@ class ABM.BreedSet extends Array
   hide: ->
     o.hidden = true for o in @
     @draw(ABM.contexts[@name])
-
-  # ### Topology
-  
-  # For ABM.patches & ABM.agents which have x, y. See ABM.util doc.
-  #
-  # Return all agents in agentset within d distance from given object.
-  # By default excludes the given object. Uses linear/torus distance
-  # depending on patches.isTorus, and patches width/height if needed.
-  inRadius: (point, distance, meToo = false) -> # for any objects w/ x, y
-    if ABM.patches.isTorus
-      width = ABM.patches.numX
-      height = ABM.patches.numY
-      @asSet (a for a in @ when \
-        u.torusDistance(point, a, width, height) <= distance and (meToo or a isnt point))
-    else
-      @asSet (a for a in @ when \
-        u.distance(point, a) <= distance and (meToo or a isnt point))
-
-  # As above, but also limited to the angle `cone` around
-  # a `heading` from object `o`.
-  inCone: (point, heading, cone, radius, meToo = false) ->
-    rSet = @inRadius point, radius, meToo
-    if ABM.patches.isTorus
-      width = ABM.patches.numX
-      height = ABM.patches.numY
-      @asSet (a for a in rSet when \
-        (a is point and meToo) or u.inTorusCone(heading, cone, radius, point, a, width, height))
-    else
-      @asSet (a for a in rSet when \
-        (a is point and meToo) or u.inCone(heading, cone, radius, point, a))
 
   # ### Debugging
   
@@ -1198,7 +1190,7 @@ class ABM.BreedSet extends Array
 #     class XY
 #       constructor: (@x, @y) ->
 #       toString: -> "{id: #{@id}, x: #{@x}, y: #{@y}}"
-#     @AS = new ABM.BreedSet # @ => global name space
+#     @AS = new ABM.Set # @ => global name space
 #
 # The result of 
 #
@@ -1207,6 +1199,26 @@ class ABM.BreedSet extends Array
 # random run, captured so we can reuse.
 #
 #     AS.add new XY(pt...) for pt in [[0, 1], [8, 0], [6, 4], [1, 3], [1, 1]]
+
+  # Return all agents within d distance from given object.
+  inRadius: (entity1, options) -> # for any objects w/ x, y
+    inner = []
+    for entity2 in @
+      if entity1.distance(entity2) <= options.radius
+        inner.push entity2
+    @asSet inner
+      
+  # As above, but also limited to the angle `cone` around
+  # a `heading` from entity1
+  inCone: (entity1, options) ->
+    options.heading ?= entity1.heading
+    # if an agent, it will have heading
+    inner = []
+    for entity2 in @
+      if u.inCone(options.heading, options.cone, options.radius,
+          entity1, entity2, ABM.patches)
+        inner.push entity2
+    @asSet inner
 
 # ### Agent
   
@@ -1258,11 +1270,10 @@ class ABM.Agent
 
   constructor: -> # called by agentSets create factory, not user
     @x = @y = 0
-    @patch = ABM.patches.patch @x, @y
     @color = u.randomColor() unless @color? # promote color if default not set
     @heading = u.randomFloat(Math.PI * 2) unless @heading?
-    @patch.agents.push @ if @patch.agents? # ABM.patches.cacheAgentsHere
     @links = [] if @cacheLinks
+    @setXY @x, @y
 
   # Set agent color to `color` scaled by `fraction`. Usage: see patch.fractionOfColor
   fractionOfColor: (color, fraction) ->
@@ -1280,11 +1291,10 @@ class ABM.Agent
     oldPatch = @patch
     @patch = ABM.patches.patch @x, @y
 
-    if oldPatch and oldPatch.agents?
+    if oldPatch
       u.remove oldPatch.agents, @
 
-    if @patch.agents?
-      @patch.agents.push @
+    @patch.agents.push @
 
     if @penDown
       drawing = ABM.drawing
@@ -1340,14 +1350,6 @@ class ABM.Agent
   # Draw the agent on the drawing layer, leaving permanent image.
   stamp: -> @draw ABM.drawing
   
-  # Return distance in patch coords from me to given agent/patch
-  # using patch topology (isTorus)
-  distance: (point) -> # o any object w/ x, y, patch or agent
-    if ABM.patches.isTorus
-      u.torusDistance @, point, ABM.patches.numX, ABM.patches.numY
-    else
-      u.distance @, point
-  
   # Return the closest torus topology point of given agent/patch 
   # relative to myself. 
   # Used internally to determine how to draw links between two agents.
@@ -1355,25 +1357,37 @@ class ABM.Agent
   closestTorusPoint: (point) ->
     u.closestTorusPoint @, point, ABM.patches.numX, ABM.patches.numY
 
-  # Set my heading towards given agent/patch using patch topology.
-  face: (o) -> @heading = @towards o
+  # Return angle towards given agent/patch using patch topology.
+  angleTowards: (point) ->
+    u.radiansToward @, point, ABM.patches
 
-  # Return heading towards given agent/patch using patch topology.
-  towards: (point) ->
-    if ABM.patches.isTorus
-      u.torusRadiansToward @, point, ABM.patches.numX, ABM.patches.numY
+  # Set heading towards given agent/patch using patch topology.
+  face: (point) ->
+    @heading = @angleTowards point
+  
+  # Return distance in patch coords from me to given agent/patch
+  # using patch topology (isTorus)
+  distance: (point) -> # o any object w/ x, y, patch or agent
+    u.distance @, point, ABM.patches
+
+  # Returns the neighbors (agents) of this agent
+  neighbors: (options) ->
+    options ?= 1
+    if options.radius
+      square = @neighbors(options.radius)
+      if options.cone
+        neighbors = square.inCone(@, options)
+      else
+        neighbors = square.inRadius(@, options)
     else
-      u.radiansToward @, point
-  
-  # Returns the neighbours (agents) of this agent
-  neighbors: (options...) ->
-    array = @breed.asSet []
-    if @patch
-      for patch in @patch.neighbors(options...)
-        for agent in patch.agents
-          array.push agent
-    array
-  
+      neighbors = @breed.asSet []
+      if @patch
+        for patch in @patch.neighbors(options)
+          for agent in patch.agents
+            if agent isnt @
+              neighbors.push agent
+    neighbors
+
   # Remove myself from the model. Includes removing myself from the
   # agents agentset and removing any links I may have.
   die: ->
@@ -1388,16 +1402,11 @@ class ABM.Agent
   # proc is called on the new agent after inserting in its agentSet.
   hatch: (num = 1, breed = ABM.agents, init = ->) ->
     breed.create num, (a) => # fat arrow so that @ = this agent
-      a.setXY @x, @y # for side effects like patches.agentsHere
+      a.setXY @x, @y # for side effects like patches.agents
       a[k] = v for own k, v of @ when k isnt "id"
       init(a) # Important: init called after object inserted in agent set
       a
 
-  # Return the members of the given agentset that are within radius distance 
-  # from me, and within cone radians of my heading using patch topology
-  inCone: (agentSet, cone, radius, meToo = false) ->
-    agentSet.inCone @patch, @heading, cone, radius, meToo # REMIND: @patch vs @?
-  
   # Return other end of link from me
   otherEnd: (l) -> if l.end1 is @ then l.end2 else l.end1
 
@@ -1427,10 +1436,10 @@ class ABM.Agent
 
 # ### Agents
 
-# Class Agents is a subclass of BreedSet which stores instances of Agent or 
+# Class Agents is a subclass of Set which stores instances of Agent or 
 # Breeds, which are subclasses of Agent
-class ABM.Agents extends ABM.BreedSet
-  # Constructor creates the empty BreedSet instance and installs
+class ABM.Agents extends ABM.Set
+  # Constructor creates the empty Set instance and installs
   # the agentClass (breed) variable shared by all the Agents in this set.
   constructor: -> # agentClass, name, mainSet
     super # call super with all the args I was called with
@@ -1438,14 +1447,16 @@ class ABM.Agents extends ABM.BreedSet
 
   # Have agents cache the links with them as a node.
   # Optimizes Agent a.myLinks method. Call before any agents created.
-  cacheLinks: -> @agentClass::cacheLinks = true # all agents, not individual breeds
+  cacheLinks: ->
+    @agentClass::cacheLinks = true # all agents, not individual breeds
 
   # Use sprites rather than drawing
   setUseSprites: (@useSprites = true) ->
   
   # Filter to return all instances of this breed. Note: if used by
   # the mainSet, returns just the agents that are not subclassed breeds.
-  in: (array) -> @asSet (o for o in array when o.breed is @)
+  in: (array) ->
+    @asSet (o for o in array when o.breed is @)
 
   # Factory: create num new agents stored in this agentset. The optional init
   # proc is called on the new agent after inserting in its agentSet.
@@ -1455,35 +1466,17 @@ class ABM.Agents extends ABM.BreedSet
 
   # Remove all agents from set via agent.die()
   # Note call in reverse order to optimize list restructuring.
-  clear: -> @last().die() while @any(); null # tricky, each die modifies list
+  clear: ->
+    @last().die() while @any()
+    null # tricky, each die modifies list
   
-  # Return an agentset of agents within the patch array
-  inPatches: (patches) ->
-    array = []
-    array.push patch.agentsHere()... for patch in patches # concat measured slower
+  # Return the members of this agentset that are neighbors of agent
+  # using patch topology
+  neighboring: (agent, rangeOptions)->
+    array = agent.neighbors(rangeOptions)
     if @mainSet? then @in array else @asSet array
-  
-  # Return an agentset of agents within the patchRectangle
-  inRectangle: (a, dx, dy, meToo = false) ->
-    rect = ABM.patches.patchRectangle a.patch, dx, dy, true
-    rect = @inPatches rect
-    unless meToo
-      u.remove rect, a
-    rect
-  
-  # Return the members of this agentset that are within radius distance
-  # from me, and within cone radians of my heading using patch topology
-  inCone: (a, heading, cone, radius, meToo = false) -> # heading? .. so p ok?
-    as = @inRectangle a, radius, radius, true # TODO really needed?
-    super a, heading, cone, radius, meToo #as.inCone a, heading, cone, radius, meToo
-  
-  # Return the members of this agentset that are within radius distance
-  # from me, using patch topology
-  inRadius: (a, radius, meToo = false)->
-    as = @inRectangle a, radius, radius, true
-    super a, radius, meToo # as.inRadius a, radius, meToo
 
-# Class Model is the control center for our BreedSets: Patches, Agents and Links.
+# Class Model is the control center for our Sets: Patches, Agents and Links.
 # Creating new models is done by subclassing class Model and overriding two 
 # virtual/abstract methods: `setup()` and `step()`
 
@@ -1674,11 +1667,11 @@ class ABM.Link
 
 # ### Links
   
-# Class Links is a subclass of BreedSet which stores instances of Link
+# Class Links is a subclass of Set which stores instances of Link
 # or subclasses of Link
 
-class ABM.Links extends ABM.BreedSet
-  # Constructor: super creates the empty BreedSet instance and installs
+class ABM.Links extends ABM.Set
+  # Constructor: super creates the empty Set instance and installs
   # the agentClass (breed) variable shared by all the Links in this set.
   constructor: -> # agentClass, name, mainSet
     super # call super with all the args I was called with
@@ -1719,7 +1712,7 @@ class ABM.Links extends ABM.BreedSet
       a.forward radius
     null
 
-# Class Model is the control center for our BreedSets: Patches, Agents and Links.
+# Class Model is the control center for our Sets: Patches, Agents and Links.
 # Creating new models is done by subclassing class Model and overriding two 
 # virtual/abstract methods: `setup()` and `step()`
 
@@ -1886,18 +1879,9 @@ class ABM.Model
   # Don't use if patch breeds have different colors.
   setMonochromePatches: -> @patches.monochrome = true
     
-  # Have patches cache the agents currently on them.
-  # Optimizes Patch p.agentsHere method
-  setCacheAgentsHere: -> @patches.cacheAgentsHere()
-  
   # Have agents cache the links with them as a node.
   # Optimizes Agent a.myLinks method
   setCacheMyLinks: -> @agents.cacheLinks()
-  
-  # Have patches cache the given patchRectangle.
-  # Optimizes patchRectangle, inRadius and inCone
-  setCachePatchRectangle:(radius, meToo = false) ->
-    @patches.cacheRectangle radius, meToo
   
 #### User Model Creation
 # A user's model is made by subclassing Model and over-riding these
@@ -2053,7 +2037,7 @@ class ABM.Model
   #
   #     even = @asSet (a for a in @agents when a.id % 2 is 0)
   #     even.shuffle().getProp("id") # [6, 0, 4, 2, 8]
-  asSet: (a, setType = ABM.BreedSet) -> ABM.BreedSet.asSet a, setType
+  asSet: (a, setType = ABM.Set) -> ABM.Set.asSet a, setType
 
   # A simple debug aid which places short names in the global name space.
   # Note we avoid using the actual name, such as "patches" because this
@@ -2094,7 +2078,6 @@ class ABM.Patch
   # * label:       text for the patch
   # * labelColor:  the color of my label text
   # * labelOffset: the x, y offset of my label from my x, y location
-  # * pRectangle:  cached rect for performance
 
   id: null              # unique id, promoted by agentset create factory method
   breed: null           # set by the agentSet owning this patch
@@ -2105,11 +2088,12 @@ class ABM.Patch
   label: null           # text for the patch
   labelColor: [0, 0, 0] # text color
   labelOffset: [0, 0]   # text offset from the patch center
-  pRectangle: null      # Performance: cached rect of neighborhood larger than n.
-  neighborsCache: {}    # Access through neighbors()
+  agents: null          # agents on this patch
   
   # New Patch: Just set x, y.
   constructor: (@x, @y) ->
+    @neighborsCache = {}
+    @agents = []
 
   # Return a string representation of the patch.
   toString: -> "{id:#{@id} xy:#{[@x, @y]} c:#{@color}}"
@@ -2133,16 +2117,8 @@ class ABM.Patch
       u.contextDrawText context, @label, x + @labelOffset[0], y + @labelOffset[1],
         @labelColor
   
-  # Return an array of the agents on this patch.
-  # If patches.cacheAgentsHere has created an @agents instance
-  # variable for the patches, agents will add/remove themselves
-  # as they move from patch to patch.
-  agentsHere: ->
-    @agents ? (a for a in ABM.agents when a.p is @)
-  # TODO refactor
-
   empty: ->
-    u.empty @agentsHere() # TODO from array
+    u.empty @agents
 
   # Returns true if this patch is on the edge of the grid.
   isOnEdge: ->
@@ -2157,35 +2133,50 @@ class ABM.Patch
       init(agent)
       agent
 
-  # Get neighbors for patch
-  neighbors: (rangeOptions) ->
-    rangeOptions ?= 1
-    neighbors = @neighborsCache[range]
-    if not neighbors?
-      if rangeOptions.diamond?
-        range = rangeOptions.diamond
-        neighbors = @breed.patchRectangleNullPadded @, range, range, true
-        diamond = []
-        counter = 0
-        row = 0
-        column = -1
-        span = range * 2 + 1
-        for neighbor in neighbors
-          row = counter % span
-          if row == 0
-            column += 1
-          distanceColumn = Math.abs(column - range)
-          distanceRow = Math.abs(row - range)
-          if distanceRow + distanceColumn <= range and distanceRow + distanceColumn != 0
-            diamond.push neighbor
-          counter += 1
-        u.remove(diamond, null)
-        neighbors = @breed.asSet diamond
-      else
-        neighbors = @breed.patchRectangle @, rangeOptions, rangeOptions
+  # Return distance in patch coords from me to given agent/patch
+  # using patch topology (isTorus)
+  distance: (point) -> # o any object w/ x, y, patch or agent
+    u.distance @, point, ABM.patches
 
-      @neighborsCache[rangeOptions] = neighbors
+  # Get neighbors for patch
+  neighbors: (options) ->
+    options ?= 1
+    cacheKey = JSON.stringify(options)
+    neighbors = @neighborsCache[cacheKey]
+    if not neighbors?
+      if options.radius
+        square = @neighbors(options.radius)
+        if options.cone
+          neighbors = square.inCone(@, options)
+        else
+          neighbors = square.inRadius(@, options)
+      else if options.diamond
+        neighbors = @diamondNeighbors(options.diamond, options)
+      else
+        neighbors = @breed.patchRectangle(@, options, options)
+
+      @neighborsCache[cacheKey] = neighbors
     return neighbors
+
+  # Not to be used directly, will not cache.
+  diamondNeighbors: (range) ->
+    neighbors = @breed.patchRectangleNullPadded @, range, range, true
+    diamond = []
+    counter = 0
+    row = 0
+    column = -1
+    span = range * 2 + 1
+    for neighbor in neighbors
+      row = counter % span
+      if row == 0
+        column += 1
+      distanceColumn = Math.abs(column - range)
+      distanceRow = Math.abs(row - range)
+      if distanceRow + distanceColumn <= range and distanceRow + distanceColumn != 0
+        diamond.push neighbor
+      counter += 1
+    u.remove(diamond, null)
+    return @breed.asSet diamond
 
 # ### Patches
   
@@ -2201,8 +2192,8 @@ class ABM.Patch
 # * isTorus:      true if coord system wraps around at edges
 # * isHeadless:   true if not using canvas drawing
 
-class ABM.Patches extends ABM.BreedSet
-  # Constructor: super creates the empty BreedSet instance and installs
+class ABM.Patches extends ABM.Set
+  # Constructor: super creates the empty Set instance and installs
   # the agentClass (breed) variable shared by all the Patches in this set.
   # Patches are created from top-left to bottom-right to match data sets.
   constructor: -> # agentClass, name, mainSet
@@ -2220,28 +2211,11 @@ class ABM.Patches extends ABM.BreedSet
     @setPixels() unless @isHeadless # setup off-page canvas for pixel ops
     @
     
-  # Have patches cache the agents currently on them.
-  # Optimizes p.agentsHere method.
-  # Call before first agent is created.
-  cacheAgentsHere: ->
-    for patch in @
-      patch.agents = []
-    null
-
   # Draw patches using scaled image of colors. Note anti-aliasing may occur
   # if browser does not support smoothing flags.
   usePixels: (@drawWithPixels = true) ->
     context = ABM.contexts.patches
     u.setContextSmoothing context, not @drawWithPixels
-
-  # Optimization: Cache a single set by modeler for use by
-  # patchRectangle, inCone, inRectangle, inRadius.
-  # Ex: flock demo model's vision rect.
-  cacheRectangle: (radius, meToo = false) ->
-    for patch in @
-      patch.pRectangle = @patchRectangle patch, radius, radius, meToo
-      patch.pRectangle.radius = radius #; patch.pRectangle.meToo = meToo
-    radius
 
   # Setup pixels used for `drawScaledPixels` and `importColors`
   # 
@@ -2328,8 +2302,6 @@ class ABM.Patches extends ABM.BreedSet
     u.remove(rectangle, null)
 
   patchRectangleNullPadded: (patch, dx, dy, meToo = false) ->
-    return patch.pRectangle if patch.pRectangle? and patch.pRectangle.radius is dx
-    # and patch.pRectangle.radius is dy
     rectangle = []; # REMIND: optimize if no wrapping, rectangle inside patch boundaries
     for y in [(patch.y - dy)..(patch.y + dy)] by 1 # by 1: perf: avoid bidir JS for loop
       for x in [(patch.x - dx)..(patch.x + dx)] by 1

@@ -579,29 +579,66 @@
     normalize8: function(array) {
       return new Uint8ClampedArray(this.normalize(array, -.5, 255.5));
     },
-    radiansToward: function(point1, point2) {
+    radiansToward: function(point1, point2, patches) {
+      if (patches.isTorus) {
+        return this.radiansTowardTorus(point1, point2, patches);
+      } else {
+        return this.radiansTowardEuclidian(point1, point2);
+      }
+    },
+    radiansTowardEuclidian: function(point1, point2) {
       return Math.atan2(point2.y - point1.y, point2.x - point1.x);
     },
-    inCone: function(heading, cone, radius, point1, point2) {
+    radiansTowardTorus: function(point1, point2, patches) {
+      var closest;
+      closest = this.closestTorusPoint(point1, point2, patches.numX, patches.numY);
+      return this.radiansTowardEuclidian(point1, closest);
+    },
+    inCone: function(heading, cone, radius, point1, point2, patches) {
+      if (patches.isTorus) {
+        return u.inConeTorus(heading, cone, radius, point1, point2, patches);
+      } else {
+        return u.inConeEuclidian(heading, cone, radius, point1, point2);
+      }
+    },
+    inConeEuclidian: function(heading, cone, radius, point1, point2) {
       var angle;
-      if (radius < this.distance(point1, point2)) {
+      if (radius < this.distanceEuclidian(point1, point2)) {
         return false;
       }
-      angle = this.radiansToward(point1, point2);
+      angle = this.radiansTowardEuclidian(point1, point2);
       return cone / 2 >= Math.abs(this.substractRadians(heading, angle));
     },
-    distance: function(point1, point2) {
+    inConeTorus: function(heading, cone, radius, point1, point2, patches) {
+      var point, _i, _len, _ref;
+      _ref = this.torus4Points(point1, point2, patches.numX, patches.numY);
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        point = _ref[_i];
+        if (this.inConeEuclidian(heading, cone, radius, point1, point)) {
+          return true;
+        }
+      }
+      return false;
+    },
+    distance: function(point1, point2, patches) {
+      if (patches.isTorus) {
+        return this.distanceTorus(point1, point2, patches);
+      } else {
+        return this.distanceEuclidian(point1, point2);
+      }
+    },
+    distanceEuclidian: function(point1, point2) {
       var distanceX, distanceY;
       distanceX = point1.x - point2.x;
       distanceY = point1.y - point2.y;
       return Math.sqrt(distanceX * distanceX + distanceY * distanceY);
     },
-    torusDistance: function(point1, point2, width, height) {
+    distanceTorus: function(point1, point2, patches) {
       var minX, minY, xDistance, yDistance;
       xDistance = Math.abs(point2.x - point1.x);
       yDistance = Math.abs(point2.y - point1.y);
-      minX = Math.min(xDistance, width - xDistance);
-      minY = Math.min(yDistance, height - yDistance);
+      minX = Math.min(xDistance, patches.numX - xDistance);
+      minY = Math.min(yDistance, patches.numY - yDistance);
       return Math.sqrt(minX * minX + minY * minY);
     },
     torus4Points: function(point1, point2, width, height) {
@@ -651,22 +688,6 @@
         yReflected = point2.y - height;
       }
       return [xReflected, yReflected];
-    },
-    torusRadiansToward: function(point1, point2, width, height) {
-      var closest;
-      closest = this.closestTorusPoint(point1, point2, width, height);
-      return this.radiansToward(point1, closest);
-    },
-    inTorusCone: function(heading, cone, radius, point1, point2, width, height) {
-      var point, _i, _len, _ref;
-      _ref = this.torus4Points(point1, point2, width, height);
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        point = _ref[_i];
-        if (this.inCone(heading, cone, radius, point1, point)) {
-          return true;
-        }
-      }
-      return false;
     },
     fileIndex: {},
     importImage: function(name, call) {
@@ -995,20 +1016,20 @@
     }
   };
 
-  ABM.BreedSet = (function(_super) {
-    __extends(BreedSet, _super);
+  ABM.Set = (function(_super) {
+    __extends(Set, _super);
 
-    BreedSet.asSet = function(a, setType) {
+    Set.asSet = function(a, setType) {
       var _ref;
       if (setType == null) {
-        setType = ABM.BreedSet;
+        setType = ABM.Set;
       }
       a.__proto__ = (_ref = setType.prototype) != null ? _ref : setType.constructor.prototype;
       return a;
     };
 
-    function BreedSet(agentClass, name, mainSet) {
-      BreedSet.__super__.constructor.call(this, 0);
+    function Set(agentClass, name, mainSet) {
+      Set.__super__.constructor.call(this, 0);
       this.agentClass = agentClass;
       this.name = name;
       this.mainSet = mainSet;
@@ -1022,9 +1043,9 @@
       }
     }
 
-    BreedSet.prototype.create = function() {};
+    Set.prototype.create = function() {};
 
-    BreedSet.prototype.add = function(object) {
+    Set.prototype.add = function(object) {
       if (this.mainSet != null) {
         this.mainSet.add(object);
       } else {
@@ -1034,7 +1055,7 @@
       return object;
     };
 
-    BreedSet.prototype.remove = function(object) {
+    Set.prototype.remove = function(object) {
       if (this.mainSet != null) {
         u.remove(this.mainSet, object);
       }
@@ -1042,12 +1063,12 @@
       return this;
     };
 
-    BreedSet.prototype.setDefault = function(name, value) {
+    Set.prototype.setDefault = function(name, value) {
       this.agentClass.prototype[name] = value;
       return this;
     };
 
-    BreedSet.prototype.own = function(vars) {
+    Set.prototype.own = function(vars) {
       var name, _i, _len, _ref;
       _ref = vars.split(" ");
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -1058,7 +1079,7 @@
       return this;
     };
 
-    BreedSet.prototype.setBreed = function(a) {
+    Set.prototype.setBreed = function(a) {
       var k, proto, v;
       u.remove(a.breed, a);
       this.push(a);
@@ -1073,7 +1094,7 @@
       return a;
     };
 
-    BreedSet.prototype.exclude = function(breeds) {
+    Set.prototype.exclude = function(breeds) {
       var o;
       breeds = breeds.split(" ");
       return this.asSet((function() {
@@ -1089,7 +1110,7 @@
       }).call(this));
     };
 
-    BreedSet.prototype.floodFill = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
+    Set.prototype.floodFill = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
       var floodFunc, _results;
       if (asetLast == null) {
         asetLast = [];
@@ -1102,7 +1123,7 @@
       return _results;
     };
 
-    BreedSet.prototype.floodFillOnce = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
+    Set.prototype.floodFillOnce = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
       var asetNext, n, p, stopEarly, _i, _j, _k, _len, _len1, _len2, _ref;
       if (asetLast == null) {
         asetLast = [];
@@ -1136,22 +1157,22 @@
       }
     };
 
-    BreedSet.prototype.uniq = function() {
+    Set.prototype.uniq = function() {
       return u.uniq(this);
     };
 
-    BreedSet.prototype.asSet = function(a, setType) {
+    Set.prototype.asSet = function(a, setType) {
       if (setType == null) {
         setType = this;
       }
-      return ABM.BreedSet.asSet(a, setType);
+      return ABM.Set.asSet(a, setType);
     };
 
-    BreedSet.prototype.asOrderedSet = function(a) {
+    Set.prototype.asOrderedSet = function(a) {
       return this.asSet(a).sort("id");
     };
 
-    BreedSet.prototype.toString = function() {
+    Set.prototype.toString = function() {
       var a;
       return "[" + ((function() {
         var _i, _len, _results;
@@ -1164,7 +1185,7 @@
       }).call(this)).join(", ") + "]";
     };
 
-    BreedSet.prototype.getProp = function(prop) {
+    Set.prototype.getProp = function(prop) {
       var o, _i, _len, _results;
       _results = [];
       for (_i = 0, _len = this.length; _i < _len; _i++) {
@@ -1174,7 +1195,7 @@
       return _results;
     };
 
-    BreedSet.prototype.getPropWith = function(prop, value) {
+    Set.prototype.getPropWith = function(prop, value) {
       var o;
       return this.asSet((function() {
         var _i, _len, _results;
@@ -1189,7 +1210,7 @@
       }).call(this));
     };
 
-    BreedSet.prototype.setProp = function(prop, value) {
+    Set.prototype.setProp = function(prop, value) {
       var i, o, _i, _j, _len, _len1;
       if (u.isArray(value)) {
         for (i = _i = 0, _len = this.length; _i < _len; i = ++_i) {
@@ -1206,29 +1227,29 @@
       }
     };
 
-    BreedSet.prototype.shuffle = function() {
+    Set.prototype.shuffle = function() {
       return u.shuffle(this);
     };
 
-    BreedSet.prototype.sort = function() {
+    Set.prototype.sort = function() {
       var options;
       options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       return u.sort.apply(u, [this].concat(__slice.call(options)));
     };
 
-    BreedSet.prototype.clone = function() {
+    Set.prototype.clone = function() {
       return this.asSet(u.clone(this));
     };
 
-    BreedSet.prototype.last = function() {
+    Set.prototype.last = function() {
       return u.last(this);
     };
 
-    BreedSet.prototype.any = function() {
+    Set.prototype.any = function() {
       return u.any(this);
     };
 
-    BreedSet.prototype.other = function(a) {
+    Set.prototype.other = function(a) {
       var o;
       return this.asSet((function() {
         var _i, _len, _results;
@@ -1243,7 +1264,7 @@
       }).call(this));
     };
 
-    BreedSet.prototype.sample = function() {
+    Set.prototype.sample = function() {
       var options, random;
       options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       random = u.sample.apply(u, [this].concat(__slice.call(options)));
@@ -1254,21 +1275,21 @@
       }
     };
 
-    BreedSet.prototype.min = function(f, valueToo) {
+    Set.prototype.min = function(f, valueToo) {
       if (valueToo == null) {
         valueToo = false;
       }
       return u.min(this, f, valueToo);
     };
 
-    BreedSet.prototype.max = function(f, valueToo) {
+    Set.prototype.max = function(f, valueToo) {
       if (valueToo == null) {
         valueToo = false;
       }
       return u.max(this, f, valueToo);
     };
 
-    BreedSet.prototype.draw = function(context) {
+    Set.prototype.draw = function(context) {
       var o, _i, _len;
       u.clearContext(context);
       for (_i = 0, _len = this.length; _i < _len; _i++) {
@@ -1280,7 +1301,7 @@
       return null;
     };
 
-    BreedSet.prototype.show = function() {
+    Set.prototype.show = function() {
       var o, _i, _len;
       for (_i = 0, _len = this.length; _i < _len; _i++) {
         o = this[_i];
@@ -1289,7 +1310,7 @@
       return this.draw(ABM.contexts[this.name]);
     };
 
-    BreedSet.prototype.hide = function() {
+    Set.prototype.hide = function() {
       var o, _i, _len;
       for (_i = 0, _len = this.length; _i < _len; _i++) {
         o = this[_i];
@@ -1298,76 +1319,7 @@
       return this.draw(ABM.contexts[this.name]);
     };
 
-    BreedSet.prototype.inRadius = function(point, distance, meToo) {
-      var a, height, width;
-      if (meToo == null) {
-        meToo = false;
-      }
-      if (ABM.patches.isTorus) {
-        width = ABM.patches.numX;
-        height = ABM.patches.numY;
-        return this.asSet((function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = this.length; _i < _len; _i++) {
-            a = this[_i];
-            if (u.torusDistance(point, a, width, height) <= distance && (meToo || a !== point)) {
-              _results.push(a);
-            }
-          }
-          return _results;
-        }).call(this));
-      } else {
-        return this.asSet((function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = this.length; _i < _len; _i++) {
-            a = this[_i];
-            if (u.distance(point, a) <= distance && (meToo || a !== point)) {
-              _results.push(a);
-            }
-          }
-          return _results;
-        }).call(this));
-      }
-    };
-
-    BreedSet.prototype.inCone = function(point, heading, cone, radius, meToo) {
-      var a, height, rSet, width;
-      if (meToo == null) {
-        meToo = false;
-      }
-      rSet = this.inRadius(point, radius, meToo);
-      if (ABM.patches.isTorus) {
-        width = ABM.patches.numX;
-        height = ABM.patches.numY;
-        return this.asSet((function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = rSet.length; _i < _len; _i++) {
-            a = rSet[_i];
-            if ((a === point && meToo) || u.inTorusCone(heading, cone, radius, point, a, width, height)) {
-              _results.push(a);
-            }
-          }
-          return _results;
-        })());
-      } else {
-        return this.asSet((function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = rSet.length; _i < _len; _i++) {
-            a = rSet[_i];
-            if ((a === point && meToo) || u.inCone(heading, cone, radius, point, a)) {
-              _results.push(a);
-            }
-          }
-          return _results;
-        })());
-      }
-    };
-
-    BreedSet.prototype.ask = function(f) {
+    Set.prototype.ask = function(f) {
       var o, _i, _len;
       if (u.isString(f)) {
         eval("f=function(o){return " + f + ";}");
@@ -1379,7 +1331,7 @@
       return this;
     };
 
-    BreedSet.prototype["with"] = function(f) {
+    Set.prototype["with"] = function(f) {
       var o;
       if (u.isString(f)) {
         eval("f=function(o){return " + f + ";}");
@@ -1397,7 +1349,34 @@
       }).call(this));
     };
 
-    return BreedSet;
+    Set.prototype.inRadius = function(entity1, options) {
+      var entity2, inner, _i, _len;
+      inner = [];
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        entity2 = this[_i];
+        if (entity1.distance(entity2) <= options.radius) {
+          inner.push(entity2);
+        }
+      }
+      return this.asSet(inner);
+    };
+
+    Set.prototype.inCone = function(entity1, options) {
+      var entity2, inner, _i, _len;
+      if (options.heading == null) {
+        options.heading = entity1.heading;
+      }
+      inner = [];
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        entity2 = this[_i];
+        if (u.inCone(options.heading, options.cone, options.radius, entity1, entity2, ABM.patches)) {
+          inner.push(entity2);
+        }
+      }
+      return this.asSet(inner);
+    };
+
+    return Set;
 
   })(Array);
 
@@ -1440,19 +1419,16 @@
 
     function Agent() {
       this.x = this.y = 0;
-      this.patch = ABM.patches.patch(this.x, this.y);
       if (this.color == null) {
         this.color = u.randomColor();
       }
       if (this.heading == null) {
         this.heading = u.randomFloat(Math.PI * 2);
       }
-      if (this.patch.agents != null) {
-        this.patch.agents.push(this);
-      }
       if (this.cacheLinks) {
         this.links = [];
       }
+      this.setXY(this.x, this.y);
     }
 
     Agent.prototype.fractionOfColor = function(color, fraction) {
@@ -1474,12 +1450,10 @@
       _ref1 = ABM.patches.coord(x, y), this.x = _ref1[0], this.y = _ref1[1];
       oldPatch = this.patch;
       this.patch = ABM.patches.patch(this.x, this.y);
-      if (oldPatch && (oldPatch.agents != null)) {
+      if (oldPatch) {
         u.remove(oldPatch.agents, this);
       }
-      if (this.patch.agents != null) {
-        this.patch.agents.push(this);
-      }
+      this.patch.agents.push(this);
       if (this.penDown) {
         drawing = ABM.drawing;
         drawing.strokeStyle = u.colorString(this.color);
@@ -1547,46 +1521,51 @@
       return this.draw(ABM.drawing);
     };
 
-    Agent.prototype.distance = function(point) {
-      if (ABM.patches.isTorus) {
-        return u.torusDistance(this, point, ABM.patches.numX, ABM.patches.numY);
-      } else {
-        return u.distance(this, point);
-      }
-    };
-
     Agent.prototype.closestTorusPoint = function(point) {
       return u.closestTorusPoint(this, point, ABM.patches.numX, ABM.patches.numY);
     };
 
-    Agent.prototype.face = function(o) {
-      return this.heading = this.towards(o);
+    Agent.prototype.angleTowards = function(point) {
+      return u.radiansToward(this, point, ABM.patches);
     };
 
-    Agent.prototype.towards = function(point) {
-      if (ABM.patches.isTorus) {
-        return u.torusRadiansToward(this, point, ABM.patches.numX, ABM.patches.numY);
-      } else {
-        return u.radiansToward(this, point);
+    Agent.prototype.face = function(point) {
+      return this.heading = this.angleTowards(point);
+    };
+
+    Agent.prototype.distance = function(point) {
+      return u.distance(this, point, ABM.patches);
+    };
+
+    Agent.prototype.neighbors = function(options) {
+      var agent, neighbors, patch, square, _i, _j, _len, _len1, _ref, _ref1;
+      if (options == null) {
+        options = 1;
       }
-    };
-
-    Agent.prototype.neighbors = function() {
-      var agent, array, options, patch, _i, _j, _len, _len1, _ref, _ref1, _ref2;
-      options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      array = this.breed.asSet([]);
-      if (this.patch) {
-        _ref1 = (_ref = this.patch).neighbors.apply(_ref, options);
-        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-          patch = _ref1[_i];
-          _ref2 = patch.agents;
-          for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
-            agent = _ref2[_j];
-            array.push(agent);
+      if (options.radius) {
+        square = this.neighbors(options.radius);
+        if (options.cone) {
+          neighbors = square.inCone(this, options);
+        } else {
+          neighbors = square.inRadius(this, options);
+        }
+      } else {
+        neighbors = this.breed.asSet([]);
+        if (this.patch) {
+          _ref = this.patch.neighbors(options);
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            patch = _ref[_i];
+            _ref1 = patch.agents;
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+              agent = _ref1[_j];
+              if (agent !== this) {
+                neighbors.push(agent);
+              }
+            }
           }
         }
       }
-      return array;
+      return neighbors;
     };
 
     Agent.prototype.die = function() {
@@ -1628,13 +1607,6 @@
           return a;
         };
       })(this));
-    };
-
-    Agent.prototype.inCone = function(agentSet, cone, radius, meToo) {
-      if (meToo == null) {
-        meToo = false;
-      }
-      return agentSet.inCone(this.patch, this.heading, cone, radius, meToo);
     };
 
     Agent.prototype.otherEnd = function(l) {
@@ -1781,13 +1753,9 @@
       return null;
     };
 
-    Agents.prototype.inPatches = function(patches) {
-      var array, patch, _i, _len;
-      array = [];
-      for (_i = 0, _len = patches.length; _i < _len; _i++) {
-        patch = patches[_i];
-        array.push.apply(array, patch.agentsHere());
-      }
+    Agents.prototype.neighboring = function(agent, rangeOptions) {
+      var array;
+      array = agent.neighbors(rangeOptions);
       if (this.mainSet != null) {
         return this["in"](array);
       } else {
@@ -1795,40 +1763,9 @@
       }
     };
 
-    Agents.prototype.inRectangle = function(a, dx, dy, meToo) {
-      var rect;
-      if (meToo == null) {
-        meToo = false;
-      }
-      rect = ABM.patches.patchRectangle(a.patch, dx, dy, true);
-      rect = this.inPatches(rect);
-      if (!meToo) {
-        u.remove(rect, a);
-      }
-      return rect;
-    };
-
-    Agents.prototype.inCone = function(a, heading, cone, radius, meToo) {
-      var as;
-      if (meToo == null) {
-        meToo = false;
-      }
-      as = this.inRectangle(a, radius, radius, true);
-      return Agents.__super__.inCone.call(this, a, heading, cone, radius, meToo);
-    };
-
-    Agents.prototype.inRadius = function(a, radius, meToo) {
-      var as;
-      if (meToo == null) {
-        meToo = false;
-      }
-      as = this.inRectangle(a, radius, radius, true);
-      return Agents.__super__.inRadius.call(this, a, radius, meToo);
-    };
-
     return Agents;
 
-  })(ABM.BreedSet);
+  })(ABM.Set);
 
   ABM.Animator = (function() {
     function Animator(model, rate, multiStep) {
@@ -2122,7 +2059,7 @@
 
     return Links;
 
-  })(ABM.BreedSet);
+  })(ABM.Set);
 
   ABM.models = {};
 
@@ -2321,19 +2258,8 @@
       return this.patches.monochrome = true;
     };
 
-    Model.prototype.setCacheAgentsHere = function() {
-      return this.patches.cacheAgentsHere();
-    };
-
     Model.prototype.setCacheMyLinks = function() {
       return this.agents.cacheLinks();
-    };
-
-    Model.prototype.setCachePatchRectangle = function(radius, meToo) {
-      if (meToo == null) {
-        meToo = false;
-      }
-      return this.patches.cacheRectangle(radius, meToo);
     };
 
     Model.prototype.startup = function() {};
@@ -2476,9 +2402,9 @@
 
     Model.prototype.asSet = function(a, setType) {
       if (setType == null) {
-        setType = ABM.BreedSet;
+        setType = ABM.Set;
       }
-      return ABM.BreedSet.asSet(a, setType);
+      return ABM.Set.asSet(a, setType);
     };
 
     Model.prototype.debug = function(debugging) {
@@ -2535,13 +2461,13 @@
 
     Patch.prototype.labelOffset = [0, 0];
 
-    Patch.prototype.pRectangle = null;
-
-    Patch.prototype.neighborsCache = {};
+    Patch.prototype.agents = null;
 
     function Patch(x, y) {
       this.x = x;
       this.y = y;
+      this.neighborsCache = {};
+      this.agents = [];
     }
 
     Patch.prototype.toString = function() {
@@ -2565,24 +2491,8 @@
       }
     };
 
-    Patch.prototype.agentsHere = function() {
-      var a, _ref;
-      return (_ref = this.agents) != null ? _ref : (function() {
-        var _i, _len, _ref1, _results;
-        _ref1 = ABM.agents;
-        _results = [];
-        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-          a = _ref1[_i];
-          if (a.p === this) {
-            _results.push(a);
-          }
-        }
-        return _results;
-      }).call(this);
-    };
-
     Patch.prototype.empty = function() {
-      return u.empty(this.agentsHere());
+      return u.empty(this.agents);
     };
 
     Patch.prototype.isOnEdge = function() {
@@ -2608,42 +2518,58 @@
       })(this));
     };
 
-    Patch.prototype.neighbors = function(rangeOptions) {
-      var column, counter, diamond, distanceColumn, distanceRow, neighbor, neighbors, range, row, span, _i, _len;
-      if (rangeOptions == null) {
-        rangeOptions = 1;
+    Patch.prototype.distance = function(point) {
+      return u.distance(this, point, ABM.patches);
+    };
+
+    Patch.prototype.neighbors = function(options) {
+      var cacheKey, neighbors, square;
+      if (options == null) {
+        options = 1;
       }
-      neighbors = this.neighborsCache[range];
+      cacheKey = JSON.stringify(options);
+      neighbors = this.neighborsCache[cacheKey];
       if (neighbors == null) {
-        if (rangeOptions.diamond != null) {
-          range = rangeOptions.diamond;
-          neighbors = this.breed.patchRectangleNullPadded(this, range, range, true);
-          diamond = [];
-          counter = 0;
-          row = 0;
-          column = -1;
-          span = range * 2 + 1;
-          for (_i = 0, _len = neighbors.length; _i < _len; _i++) {
-            neighbor = neighbors[_i];
-            row = counter % span;
-            if (row === 0) {
-              column += 1;
-            }
-            distanceColumn = Math.abs(column - range);
-            distanceRow = Math.abs(row - range);
-            if (distanceRow + distanceColumn <= range && distanceRow + distanceColumn !== 0) {
-              diamond.push(neighbor);
-            }
-            counter += 1;
+        if (options.radius) {
+          square = this.neighbors(options.radius);
+          if (options.cone) {
+            neighbors = square.inCone(this, options);
+          } else {
+            neighbors = square.inRadius(this, options);
           }
-          u.remove(diamond, null);
-          neighbors = this.breed.asSet(diamond);
+        } else if (options.diamond) {
+          neighbors = this.diamondNeighbors(options.diamond, options);
         } else {
-          neighbors = this.breed.patchRectangle(this, rangeOptions, rangeOptions);
+          neighbors = this.breed.patchRectangle(this, options, options);
         }
-        this.neighborsCache[rangeOptions] = neighbors;
+        this.neighborsCache[cacheKey] = neighbors;
       }
       return neighbors;
+    };
+
+    Patch.prototype.diamondNeighbors = function(range) {
+      var column, counter, diamond, distanceColumn, distanceRow, neighbor, neighbors, row, span, _i, _len;
+      neighbors = this.breed.patchRectangleNullPadded(this, range, range, true);
+      diamond = [];
+      counter = 0;
+      row = 0;
+      column = -1;
+      span = range * 2 + 1;
+      for (_i = 0, _len = neighbors.length; _i < _len; _i++) {
+        neighbor = neighbors[_i];
+        row = counter % span;
+        if (row === 0) {
+          column += 1;
+        }
+        distanceColumn = Math.abs(column - range);
+        distanceRow = Math.abs(row - range);
+        if (distanceRow + distanceColumn <= range && distanceRow + distanceColumn !== 0) {
+          diamond.push(neighbor);
+        }
+        counter += 1;
+      }
+      u.remove(diamond, null);
+      return this.breed.asSet(diamond);
     };
 
     return Patch;
@@ -2678,33 +2604,11 @@
       return this;
     };
 
-    Patches.prototype.cacheAgentsHere = function() {
-      var patch, _i, _len;
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        patch = this[_i];
-        patch.agents = [];
-      }
-      return null;
-    };
-
     Patches.prototype.usePixels = function(drawWithPixels) {
       var context;
       this.drawWithPixels = drawWithPixels != null ? drawWithPixels : true;
       context = ABM.contexts.patches;
       return u.setContextSmoothing(context, !this.drawWithPixels);
-    };
-
-    Patches.prototype.cacheRectangle = function(radius, meToo) {
-      var patch, _i, _len;
-      if (meToo == null) {
-        meToo = false;
-      }
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        patch = this[_i];
-        patch.pRectangle = this.patchRectangle(patch, radius, radius, meToo);
-        patch.pRectangle.radius = radius;
-      }
-      return radius;
     };
 
     Patches.prototype.setPixels = function() {
@@ -2793,9 +2697,6 @@
       var nextPatch, rectangle, x, y, _i, _j, _ref, _ref1, _ref2, _ref3;
       if (meToo == null) {
         meToo = false;
-      }
-      if ((patch.pRectangle != null) && patch.pRectangle.radius === dx) {
-        return patch.pRectangle;
       }
       rectangle = [];
       for (y = _i = _ref = patch.y - dy, _ref1 = patch.y + dy; _i <= _ref1; y = _i += 1) {
@@ -2990,7 +2891,7 @@
 
     return Patches;
 
-  })(ABM.BreedSet);
+  })(ABM.Set);
 
   ABM.shapes = ABM.util.s = (function() {
     var ccirc, cimg, circ, csq, fillSlot, poly, spriteSheets;
