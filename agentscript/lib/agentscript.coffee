@@ -22,15 +22,6 @@ do ->
   @requestAnimFrame or= (callback) -> @setTimeout(callback, 1000 / 60)
   @cancelAnimFrame or= (id) -> @clearTimeout(id)
 
-# Shim for `Array.indexOf` if not implemented.
-# Use [es5-shim](https://github.com/kriskowal/es5-shim) if additional shims needed.
-Array::indexOf or= (object) ->
-  for x, i in @
-    return i if x is object
-  -1
-
-Array::_sort = Array::sort
-
 # **ABM.util** contains the general utilities for the project. Note that within
 # **util** `@` referrs to ABM.util, *not* the global name space as above.
 # Alias: u is an alias for ABM.util within the agentscript module (not outside)
@@ -38,6 +29,9 @@ Array::_sort = Array::sort
 #      u.clearContext(context) is equivalent to
 #      ABM.util.clearContext(context)
 
+# Extended with ABM.util.array
+
+# TODO positions
 ABM.util = u =
   # ### Language extensions
   
@@ -61,8 +55,9 @@ ABM.util = u =
   
   # Good replacements for Javascript's badly broken`typeof` and `instanceof`
   # See [underscore.coffee](http://goo.gl/L0umK)
-  isArray: Array.isArray or (object) ->
-    !!(object and obj.concat and object.unshift and not object.callee)
+  # TODO fix: Array.isArray or (object) ->
+  isArray: (object) ->
+    !!(object and object.concat and object.unshift and not object.callee)
 
   isFunction: (object) ->
     !!(object and object.constructor and object.call and object.apply)
@@ -172,8 +167,8 @@ ABM.util = u =
     @randomMapColor [0, 127, 255]
 
   # Return new color, c, by scaling each value of the rgb color max.
-  fractionOfColor: (maxColor, fraction, color = []) ->
-    color.string = null
+  fractionOfColor: (maxColor, fraction) ->
+    color = []
     for value, i in maxColor
       color[i] = @clamp(Math.round(value * fraction), 0, 255)
     color
@@ -229,291 +224,34 @@ ABM.util = u =
   # ### Object operations
   
   # Return object's own key or variable values
+  #
   ownKeys: (object) ->
-    (key for own key, value of object)
+    ABM.Array.from(key for own key, value of object)
 
   ownVariableKeys: (object) ->
-    (key for own key, value of object when not @isFunction value)
+    ABM.Array.from(key for own key, value of object when not @isFunction value)
 
   ownValues: (object) ->
-    (value for own key, value of object)
-
-  # ### Array operations
-  
-  # TODO allow user to add these to the Array object
-
-  # Return an array of floating pt numbers as strings at given precision;
-  # useful for printing
-  toFixed: (array, precision = 2) ->
-    newArray = []
-    for number in array
-      newArray.push number.toFixed precision
-    newArray
-
-  # Does the array have any elements? Is the array empty?
-  any: (array) ->
-    not u.empty(array)
-
-  empty: (array) ->
-    array.length is 0
-
-  # Make a copy of the array. Needed when you don't want to modify the given
-  # array with mutator methods like sort, splice or your own functions.
-  # By giving begin/arguments, retrieve a subset of the array.
-  # Works with TypedArrays too.
-  clone: (array, begin = null, end = null) ->
-    if array.slice?
-      method = "slice"
-    else
-      method = "subarray"
-
-    if begin?
-      array[method] begin, end
-    else
-      array[method] 0
-
-  # Return last element of array.
-  # Error if empty.
-  last: (array) ->
-    @error "last: empty array" if @empty array
-    array[array.length - 1]
-
-  # Return random element of array or number random elements of array.
-  # Note: array elements presumed unique, i.e. objects or distinct primitives
-  # Note: clone, shuffle then first number has poor performance
-  sample: (array, numberOrCondition = null, condition = null) ->
-    if @isFunction numberOrCondition
-      condition = numberOrCondition
-    else if numberOrCondition?
-      number = Math.floor(numberOrCondition)
-
-    if number?
-      newArray = []
-      object = true
-      while newArray.length < number and object?
-        object = @sample(array, condition)
-        if object and object not in newArray
-          newArray.push object
-      return newArray
-    else if condition?
-      checked = []
-      while checked.length < array.length
-        object = @sample(array)
-        if object and object not in checked
-          checked.push object
-          if condition(object)
-            return object
-    else
-      if @empty array
-        return null
-      return array[@randomInt array.length]
-
-  # True if object is in array.
-  contains: (array, object) ->
-    array.indexOf(object) >= 0
-
-  # Remove an object from an array.
-  # Error if object not in array.
-  remove: (array, object) ->
-    while true
-      index = array.indexOf object
-      break if index is -1
-      array.splice index, 1
-    array
-
-  # Remove elements in objects from an array. Binary search if f isnt null.
-  # Error if an object not in array.
-  removeItems: (array, objects) ->
-    for object in objects
-      @remove array, object
-    array
-
-  # Randomize the elements of this array.
-  shuffle: (array) ->
-    array.sort -> 0.5 - Math.random()
-
-  # TODO add array functions to Array extension, then allow it to be
-  # added to array in user models through an ABM.setup() function
-  #
-  # Return object when lambda(object) min/max in array. Error if array empty.
-  # If f is a string, return element with max value of that property.
-  # If "valueToo" then return a 2-array of the element and the value;
-  # used for cases where f is costly function.
-  # 
-  #     array = [{x: 1, y: 2}, {x: 3, y: 4}]
-  #     array.min()
-  #     # returns {x: 1, y: 2} 5
-  #     [min, dist2] = array.min(((o) -> o.x * o.x + o.y * o.y), true)
-  #     # returns {x: 3, y: 4}
-  min: (array, lambda = @identityFunction, valueToo = false) ->
-    @error "min: empty array" if @empty array
-    if @isString lambda
-      lambda = @propertyFunction lambda
-    minValue = Infinity
-    minObject = null
-
-    for object in array
-      value = lambda(object)
-      if value < minValue
-        minValue = value
-        minObject = object
-
-    if valueToo
-      [minObject, minValue]
-    else
-      minObject
-
-  max: (array, lambda = @identityFunction, valueToo = false) ->
-    @error "max: empty array" if @empty array
-    if @isString lambda
-      lambda = @propertyFunction lambda
-    maxValue = -Infinity
-    maxObject = null
-
-    for object in array
-      value = lambda(object)
-      if value > maxValue
-        maxValue = value
-        maxObject = object
-
-    if valueToo
-      [maxObject, maxValue]
-    else
-      maxObject
-
-  sum: (array, lambda = @identityFunction) ->
-    if @isString lambda
-      lambda = @propertyFunction lambda
-
-    value = 0
-    for object in array
-      value += lambda(object)
-
-    value
-
-  average: (array, lambda = @identityFunction) ->
-    @sum(array, lambda) / array.length
-
-  median: (array) ->
-    if array.sort?
-      array = @clone array
-    else
-      array = @typedToJS array
-
-    middle = (array.length - 1) / 2
-
-    @sort array
-    (array[Math.floor(middle)] + array[Math.ceil(middle)]) / 2
-
-  # Return histogram of o when f(o) is a numeric value in array.
-  # Histogram interval is bin. Error if array empty.
-  # If f is a string, return histogram of that property.
-  #
-  # In examples below, histogram returns [3, 1, 1, 0, 0, 1]
-  #
-  #     a = [1, 3, 4, 1, 1, 10]
-  #     h = histogram a, 2, (i) -> i
-  #     
-  #     b = ({id:i} for i in a)
-  #     h = histogram b, 2, (o) -> o.id
-  #     h = histogram b, 2, "id"
-  histogram: (array, binSize = 1, lambda = @identityFunction) ->
-    if @isString lambda
-      lambda = @propertyFunction lambda
-    histogram = []
-
-    for object in array
-      integer = Math.floor lambda(object) / binSize
-      histogram[integer] or= 0
-      histogram[integer] += 1
-
-    for value, integer in histogram when not value?
-      histogram[integer] = 0
-
-    histogram
-
-  # Mutator. Sort array of objects in place by the function f.
-  # If f is string, f returns property of object.
-  # Returns array.
-  # Clone first if you want to preserve the original array.
-  #
-  #     array = [{i: 1}, {i: 5}, {i: -1}, {i: 2}, {i: 2}]
-  #     sortBy array, "i"
-  #     # array now is [{i: -1}, {i: 1}, {i: 2}, {i: 2}, {i:5}]
-  sort: (array, lambda = null) ->
-    if @isString lambda # use item[f] if f is string
-      lambda = @propertySortFunction lambda
-
-    array._sort lambda
-
-  # Mutator. Removes adjacent dups, by reference, in place from array.
-  # Note "by reference" means litteraly same object, not copy. Returns array.
-  # Clone first if you want to preserve the original array.
-  #
-  #     ids = ({id:i} for i in [0..10])
-  #     a = (ids[i] for i in [1, 3, 4, 1, 1, 10])
-  #     # a is [{id: 1}, {id: 3}, {id: 4}, {id: 1}, {id: 1}, {id: 10}]
-  #     b = clone a
-  #     sortBy b, "id"
-  #     # b is [{id:1}, {id: 1}, {id: 1}, {id: 3}, {id: 4}, {id: 10}]
-  #     uniq b
-  #     # b now is [{id:1}, {id: 3}, {id: 4}, {id: 10}]
-  uniq: (array) ->
-    hash = {}
-
-    for index in [0...array.length]
-      if hash[array[index]] is true
-        array.splice index, 1
-      hash[array[index]] = true
-
-    array
-  
-  # Return a new array composed of the rows of a matrix. I.e. convert
-  #
-  #     [[1, 2, 3], [4, 5, 6]] to [1, 2, 3, 4, 5, 6]
-  flatten: (array) ->
-    array.reduce((arrayA, arrayB) ->
-      if not u.isArray arrayA
-        arrayA = [arrayA]
-      arrayA.concat arrayB)
-  
-  # Return an array with values in [low, high], defaults to [0, 1].
-  # Note: to have a half-open interval, [low, high), try high = high - .00009
-  normalize: (array, low = 0, high = 1) ->
-    min = @min array
-    max = @max array
-    scale = 1 / (max - min)
-    newArray = []
-    for number in array
-      newArray.push @linearInterpolate(low, high, scale * (number - min))
-    newArray
-
-  normalizeInt: (array, low, high) ->
-    (Math.round i for i in @normalize array, low, high)
-
-  # Return a Uint8ClampedArray, normalized to [.5, 255.5] then round/clamp to [0, 255]
-  # TODO maybe data-specific?
-  normalize8: (array) ->
-    new Uint8ClampedArray @normalize(array, -.5, 255.5)
+    ABM.Array.from(value for own key, value of object)
 
   # ### Topology operations
   
   # Return angle in [-pi, pi] radians from point1 to point2
   # [See: Math.atan2](http://goo.gl/JS8DF)
-  radiansToward: (point1, point2, patches) ->
+  angle: (point1, point2, patches) ->
     if patches.isTorus
-      @radiansTowardTorus point1, point2, patches
+      @angleTorus point1, point2, patches
     else
-      @radiansTowardEuclidian point1, point2
+      @angleEuclidian point1, point2
 
   # Euclidian radians toward
-  radiansTowardEuclidian: (point1, point2) ->
+  angleEuclidian: (point1, point2) ->
     Math.atan2 point2.y - point1.y, point2.x - point1.x
 
   # Return the angle from x1, y1 to x2, y2 on torus using shortest reflection.
-  radiansTowardTorus: (point1, point2, patches) ->
-    closest = @closestTorusPoint point1, point2, patches.numX, patches.numY
-    @radiansTowardEuclidian point1, closest
+  angleTorus: (point1, point2, patches) ->
+    closest = @closestTorusPoint point1, point2, patches.width, patches.height
+    @angleEuclidian point1, closest
 
   # Return true if point2 is in cone radians around heading radians from 
   # point1.x, point2.x and within distance radius from point1.x,
@@ -529,14 +267,14 @@ ABM.util = u =
     if radius < @distanceEuclidian point1, point2
       return false
 
-    angle = @radiansTowardEuclidian point1, point2 # angle from 1 to 2
+    angle = @angleEuclidian point1, point2 # angle from 1 to 2
     cone / 2 >= Math.abs @substractRadians(heading, angle)
 
   # Return true if point2 is in cone radians around heading radians from 
   # point1.x, point2.x and within distance radius from point1.x, point2.x
   # considering all torus reflections.
   inConeTorus: (heading, cone, radius, point1, point2, patches) ->
-    for point in @torus4Points point1, point2, patches.numX, patches.numY
+    for point in @torus4Points point1, point2, patches.width, patches.height
       return true if @inConeEuclidian heading, cone, radius, point1, point
     false
 
@@ -581,8 +319,8 @@ ABM.util = u =
   distanceTorus: (point1, point2, patches) ->
     xDistance = Math.abs point2.x - point1.x
     yDistance = Math.abs point2.y - point1.y
-    minX = Math.min xDistance, patches.numX - xDistance
-    minY = Math.min yDistance, patches.numY - yDistance
+    minX = Math.min xDistance, patches.width - xDistance
+    minY = Math.min yDistance, patches.height - yDistance
     Math.sqrt minX * minX + minY * minY
 
   # Return 4 torus point reflections of point2 around point1
@@ -774,7 +512,9 @@ ABM.util = u =
   # Clear the 2D/3D layer to be transparent. Note this [discussion](http://goo.gl/qekXS).
   clearContext: (context) ->
     if context.save? # test for 2D context
-      @setIdentity context # context.canvas.width = context.canvas.width not used so as to preserve patch coords
+      @setIdentity context
+      # context.canvas.width = context.canvas.width not used so as to preserve
+      # patch coordinates
       context.clearRect 0, 0, context.canvas.width, context.canvas.height
       context.restore()
     else # 3D
@@ -792,7 +532,7 @@ ABM.util = u =
       context.clearColor color..., 1 # alpha = 1 unless color is rgba
       context.clear context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT
 
-  # Draw string of the given color at the xy location, in context pixel coords.
+  # Draw string of the given color at the xy location, in context pixel coordinates.
   # Use setIdentity .. reset if a transform is being used by caller.
   contextDrawText: (context, string, x, y, color = [0, 0, 0], setIdentity = true) ->
     @setIdentity(context) if setIdentity
@@ -886,14 +626,765 @@ ABM.util = u =
   typedToJS: (typedArray) ->
     (i for i in typedArray)
 
-# A **Set** is an array, along with a class, agentClass, whose instances
-# are the items of the array.  Instances of the class are created
-# by the `create` factory method of a Set.
+# Array utility functions. Are added to ABM.Array and to util for
+# legacy reasons.
+
+ABM.util.array =
+  # The static `ABM.Array.from` as a method.
+  # Used by methods creating new arrays.
+  from: (array, arrayType) ->
+    ABM.Array.from array, arrayType # setType = ABM.Set
+  # TODO replace in code
+
+  # Return string representative of agentset.
+  toString: (array) ->
+    "[" + (object.toString() for object in array).join(", ") + "]"
+
+  # Return an array of floating pt numbers as strings at given precision;
+  # useful for printing
+  toFixed: (array, precision = 2) ->
+    newArray = []
+    for number in array
+      newArray.push number.toFixed precision
+    newArray
+
+  # Does the array have any elements? Is the array empty?
+  any: (array) ->
+    not @empty(array)
+
+  empty: (array) ->
+    array.length is 0
+
+  # Make a copy of the array. Needed when you don't want to modify the given
+  # array with mutator methods like sort, splice or your own functions.
+  # By giving begin/arguments, retrieve a subset of the array.
+  # Works with TypedArrays too.
+  clone: (array, begin = null, end = null) ->
+    if array.slice?
+      method = "slice"
+    else
+      method = "subarray"
+
+    if begin?
+      array[method] begin, end
+    else
+      array[method] 0
+
+  # Return first element of array.
+  first: (array) ->
+    array[0]
+
+  # Return last element of array.
+  last: (array) ->
+    if @empty array
+      undefined
+    else
+      array[array.length - 1]
+
+  # Return random element of array or number random elements of array.
+  # Note: array elements presumed unique, i.e. objects or distinct primitives
+  # Note: clone, shuffle then first number has poor performance
+  sample: (array, numberOrCondition = null, condition = null) ->
+    if u.isFunction numberOrCondition
+      condition = numberOrCondition
+    else if numberOrCondition?
+      number = Math.floor(numberOrCondition)
+
+    if number?
+      newArray = new ABM.Array
+      object = true
+      while newArray.length < number and object?
+        object = @sample(array, condition)
+        if object and object not in newArray
+          newArray.push object
+      return newArray
+    else if condition?
+      checked = new ABM.Array
+      while checked.length < array.length
+        object = @sample(array)
+        if object and object not in checked
+          checked.push object
+          if condition(object)
+            return object
+    else
+      if @empty array
+        return null
+      return array[u.randomInt array.length]
+
+  # True if object is in array.
+  contains: (array, object) ->
+    array.indexOf(object) >= 0
+
+  # Remove an object from an array.
+  # Error if object not in array.
+  remove: (array, object) ->
+    while true
+      index = array.indexOf object
+      break if index is -1
+      array.splice index, 1
+    array
+
+  # Remove elements in objects from an array. Binary search if f isnt null.
+  # Error if an object not in array.
+  removeItems: (array, objects) ->
+    for object in objects
+      @remove array, object
+    array
+
+  # Randomize the elements of this array.
+  shuffle: (array) ->
+    array.sort -> 0.5 - Math.random()
+
+  # TODO add array functions to Array extension, then allow it to be
+  # added to array in user models through an ABM.setup() function
+  #
+  # Return object when lambda(object) min/max in array. Error if array empty.
+  # If f is a string, return element with max value of that property.
+  # If "valueToo" then return a 2-array of the element and the value;
+  # used for cases where f is costly function.
+  # 
+  #     array = [{x: 1, y: 2}, {x: 3, y: 4}]
+  #     array.min()
+  #     # returns {x: 1, y: 2} 5
+  #     [min, dist2] = array.min(((o) -> o.x * o.x + o.y * o.y), true)
+  #     # returns {x: 3, y: 4}
+  min: (array, lambda = u.identityFunction, valueToo = false) ->
+    u.error "min: empty array" if @empty array
+    if u.isString lambda
+      lambda = u.propertyFunction lambda
+    minValue = Infinity
+    minObject = null
+
+    for object in array
+      value = lambda(object)
+      if value < minValue
+        minValue = value
+        minObject = object
+
+    if valueToo
+      [minObject, minValue]
+    else
+      minObject
+
+  max: (array, lambda = u.identityFunction, valueToo = false) ->
+    u.error "max: empty array" if @empty array
+    if u.isString lambda
+      lambda = u.propertyFunction lambda
+    maxValue = -Infinity
+    maxObject = null
+
+    for object in array
+      value = lambda(object)
+      if value > maxValue
+        maxValue = value
+        maxObject = object
+
+    if valueToo
+      [maxObject, maxValue]
+    else
+      maxObject
+
+  sum: (array, lambda = u.identityFunction) ->
+    if u.isString lambda
+      lambda = u.propertyFunction lambda
+
+    value = 0
+    for object in array
+      value += lambda(object)
+
+    value
+
+  average: (array, lambda = u.identityFunction) ->
+    @sum(array, lambda) / array.length
+
+  median: (array) ->
+    if array.sort?
+      array = @clone array
+    else
+      array = u.typedToJS array
+
+    middle = (array.length - 1) / 2
+
+    @sort array
+
+    (array[Math.floor(middle)] + array[Math.ceil(middle)]) / 2
+
+  # Return histogram of o when f(o) is a numeric value in array.
+  # Histogram interval is bin. Error if array empty.
+  # If f is a string, return histogram of that property.
+  #
+  # In examples below, histogram returns [3, 1, 1, 0, 0, 1]
+  #
+  #     a = [1, 3, 4, 1, 1, 10]
+  #     h = histogram a, 2, (i) -> i
+  #     
+  #     b = ({id:i} for i in a)
+  #     h = histogram b, 2, (o) -> o.id
+  #     h = histogram b, 2, "id"
+  histogram: (array, binSize = 1, lambda = u.identityFunction) ->
+    if u.isString lambda
+      lambda = u.propertyFunction lambda
+    histogram = []
+
+    for object in array
+      integer = Math.floor lambda(object) / binSize
+      histogram[integer] or= 0
+      histogram[integer] += 1
+
+    for value, integer in histogram when not value?
+      histogram[integer] = 0
+
+    histogram
+
+  # Mutator. Sort array of objects in place by the function f.
+  # If f is string, f returns property of object.
+  # Returns array.
+  # Clone first if you want to preserve the original array.
+  #
+  #     array = [{i: 1}, {i: 5}, {i: -1}, {i: 2}, {i: 2}]
+  #     sortBy array, "i"
+  #     # array now is [{i: -1}, {i: 1}, {i: 2}, {i: 2}, {i:5}]
+  sort: (array, lambda = null) ->
+    if u.isString lambda # use item[f] if f is string
+      lambda = u.propertySortFunction lambda
+
+    array._sort lambda
+
+  # Mutator. Removes dups, by reference, in place from array.
+  # Note "by reference" means litteraly same object, not copy. Returns array.
+  # Clone first if you want to preserve the original array.
+  #
+  #     ids = ({id: i} for i in [0..10])
+  #     a = (ids[i] for i in [1, 3, 4, 1, 1, 10])
+  #     # a is [{id: 1}, {id: 3}, {id: 4}, {id: 1}, {id: 1}, {id: 10}]
+  #     b = clone a
+  #     sortBy b, "id"
+  #     # b is [{id:1}, {id: 1}, {id: 1}, {id: 3}, {id: 4}, {id: 10}]
+  #     uniq b
+  #     # b now is [{id:1}, {id: 3}, {id: 4}, {id: 10}]
+  uniq: (array) ->
+    hash = {}
+
+    i = 0
+    while i < array.length
+      if hash[array[i]] is true
+        array.splice i, 1
+        i -= 1
+      else
+        hash[array[i]] = true
+      i += 1
+
+    array
+  
+  # Return a new array composed of the rows of a matrix. I.e. convert
+  #
+  #     [[1, 2, 3], [4, 5, 6]] to [1, 2, 3, 4, 5, 6]
+  flatten: (array) ->
+    array.reduce((arrayA, arrayB) ->
+      if not u.isArray arrayA
+        arrayA = new ABM.Array arrayA
+      arrayA.concat arrayB)
+
+  # Returns a new array that has addArray appended
+  #
+  # Concat checks [[ClassName]], and this does not work for things
+  # inheriting from Array.
+  concat: (array, addArray) ->
+    newArray = array.clone()
+    if u.isArray addArray
+      for element in addArray
+        newArray.push element
+    else
+      newArray.push addArray
+
+    newArray
+  
+  # Return an array with values in [low, high], defaults to [0, 1].
+  # Note: to have a half-open interval, [low, high), try high = high - .00009
+  normalize: (array, low = 0, high = 1) ->
+    min = @min array
+    max = @max array
+    scale = 1 / (max - min)
+    newArray = []
+    for number in array
+      newArray.push u.linearInterpolate(low, high, scale * (number - min))
+    newArray
+
+  normalizeInt: (array, low, high) ->
+    (Math.round i for i in @normalize array, low, high)
+
+  # Return a Uint8ClampedArray, normalized to [.5, 255.5] then round/clamp to [0, 255]
+  # TODO maybe data-specific?
+  normalize8: (array) ->
+    new Uint8ClampedArray @normalize(array, -.5, 255.5)
+
+  # ### Debugging
+  
+  # Useful in console.
+  # Also see [CoffeeConsole](http://goo.gl/1i7bd) Chrome extension.
+  
+  # Similar to NetLogo ask & with operators.
+  # Allows functions as strings. Use:
+  #
+  #     AS.getProperty("x") # [1, 8, 6, 2, 2]
+  #     AS.with("o.x < 5").ask("o.x = o.x + 1")
+  #     AS.getProperty("x") # [2, 8, 6, 3, 3]
+  #
+  #     ABM.agents.with("o.id < 100").ask("o.color = [255, 0, 0]")
+  ask: (array, functionString) ->
+    if u.isString functionString
+      eval("functionString=function(o){return " + functionString + ";}")
+    functionString(object) for object in array
+    array
+
+  with: (array, functionString) ->
+    if u.isString functionString
+      eval("f=function(o){return " + functionString + ";}")
+    @from (object for object in array when functionString(object))
+ 
+  # ### Property Utilities
+
+  # Property access, also useful for debugging<br>
+  
+  # Return an array of a property of the agentset
+  #
+  #      AS.getProperty "x" # [0, 8, 6, 1, 1]
+  # TODO Prop -> Property
+  getProperty: (array, property) ->
+    object[property] for object in array
+
+  # Return an array of agents with the property equal to the given value
+  #
+  #     AS.getPropertyWith "x", 1
+  #     [{id: 4, x: 1, y: 3},{id: 5, x: 1, y: 1}]
+  getPropertyWith: (array, property, value) ->
+    @from (object for object in array when object[property] is value)
+
+  # Set the property of the agents to a given value.  If value
+  # is an array, its values will be used, indexed by agentSet's index.
+  # This is generally used via: getProperty, modify results, setProperty
+  #
+  #     # increment x for agents with x=1
+  #     AS1 = ABM.Set.from AS.getPropertyWith("x", 1)
+  #     AS1.setProperty "x", 2 # {id: 4, x: 2, y: 3}, {id: 5, x: 2, y: 1}
+  #
+  # Note this changes the last two objects in the original AS above
+  setProperty: (array, property, value) ->
+    if u.isArray value
+      object[property] = value[i] for object, i in array
+    else
+      object[property] = value for object in array
+    array
+ 
+  # Return an array without given object
+  #
+  #     as = AS.clone().other(AS[0])
+  #     as.getProperty "id"  # [1, 2, 3, 4] 
+  other: (array, given) ->
+    @from (object for object in array when object isnt given) # could clone & remove
+
+
+# Extends ABM.Array and util
+  
+ABM.util.array.extender =
+  methods: ->
+    (key for key, value of ABM.util.array when typeof value is 'function')
+
+  extendArray: (className) ->
+    methods = @methods()
+    for method in methods
+      eval("""
+        #{className}.prototype.#{method} = function() {
+          var options, _ref, _ret;
+          options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+          _ret = (_ref = u.array).#{method}.apply(_ref, [this].concat(__slice.call(options)));
+          if (ABM.util.isArray(_ret)) {
+            return this.constructor.from(_ret);
+          } else {
+            return _ret;
+          }
+        };""")
+
+# An **ABM.Array** is an array, with some helper methods.
 #
-# It is a subclass of `Array` and is the base class for
-# `Patches`, `Agents`, and `Links`. A Set keeps track of all
-# its created instances.  It also provides, much like the **ABM.util**
-# module, many methods shared by all subclasses of Set.
+# It is a subclass of `Array` and is the base class for `ABM.Set`.
+#
+# Note: subclassing `Array` can be dangerous and we may have to convert
+# to a different style. See Trevor Burnham's [comments](http://goo.gl/Lca8g)
+# but thus far we've resolved all related problems.
+
+# Shim for `Array.indexOf` if not implemented.
+# Use [es5-shim](https://github.com/kriskowal/es5-shim) if additional shims needed.
+# TODO look into
+Array::indexOf or= (given) ->
+  for object, i in @
+    return i if object is given
+  -1
+
+Array::_sort = Array::sort
+
+# Extended with ABM.util.array
+
+class ABM.Array extends Array
+  # ### Static members
+  
+  # `from` is a static wrapper function converting an array into
+  # an `ABM.Array` ..
+  #
+  # It gains access to all the methods below. Ex:
+  #
+  #     array = [1, 2, 3]
+  #     ABM.Array.from(array)
+  #     randomNr = array.random()
+  @from: (array, arrayType = ABM.Array) ->
+    array.__proto__ = arrayType.prototype ? arrayType.constructor.prototype
+    array
+ 
+  # WARNING: Needs constructor or subclassing Array won't work
+  constructor: (options...) ->
+    return @constructor.from(options)
+ 
+# ### Extending
+
+# Adds most methods
+#
+ABM.util.array.extender.extendArray('ABM.Array')
+
+# A *very* simple shapes module for drawing
+# [NetLogo-like](http://ccl.northwestern.edu/netlogo/docs/) agents.
+
+ABM.util.shapes = do ->
+  # Each shape is a named object with two members: 
+  # a boolean rotate and a draw procedure and two optional
+  # properties: img for images, and shortcut for a transform-less version of draw.
+  # The shape is used in the following context with a color set
+  # and a transform such that the shape should be drawn in a -.5 to .5 square
+  #
+  #     context.save()
+  #     context.fillStyle = u.colorString color
+  #     context.translate x, y; context.scale size, size;
+  #     context.rotate heading if shape.rotate
+  #     context.beginPath(); shape.draw(context); context.closePath()
+  #     context.fill()
+  #     context.restore()
+  #
+  # The list of current shapes, via `u.shapes.names()` below, is:
+  #
+  #     ["default", "triangle", "arrow", "bug", "pyramid", 
+  #      "circle", "square", "pentagon", "ring", "cup", "person"]
+  
+  # A simple polygon utility:  c is the 2D context, and a is an array of 2D points.
+  # c.closePath() and c.fill() will be called by the calling agent, see initial 
+  # discription of drawing context.  It is used in adding a new shape above.
+  poly = (c, a) ->
+    for p, i in a
+      if i is 0 then c.moveTo p[0], p[1] else c.lineTo p[0], p[1]
+    null
+
+  # Centered drawing primitives: centered on x,y with a given width/height size.
+  # Useful for shortcuts
+  circ = (c, x, y, s) -> c.arc x, y, s / 2, 0, 2 * Math.PI # centered circle
+
+  ccirc = (c, x, y, s) -> c.arc x, y, s / 2, 0, 2 * Math.PI, true # centered counter clockwise circle
+
+  cimg = (c, x, y, s, img) ->
+    c.scale 1,-1
+    c.drawImage img, x - s / 2, y - s / 2, s, s
+    c.scale 1,-1 # centered image
+
+  csq = (c, x, y, s) -> c.fillRect x - s / 2, y - s / 2, s, s # centered square
+  
+  # An async util for delayed drawing of images into sprite slots
+  fillSlot = (slot, img) ->
+    slot.context.save()
+    slot.context.scale 1, -1
+    slot.context.drawImage img, slot.x, -(slot.y + slot.bits), slot.bits, slot.bits
+    slot.context.restore()
+
+  # The spritesheet data, indexed by bits
+  spriteSheets = new ABM.Array
+  
+  # The module returns the following object:
+  default:
+    rotate: true
+    draw: (c) ->
+      poly c, [[.5, 0], [-.5, -.5], [-.25, 0], [-.5, .5]]
+
+  triangle:
+    rotate: true
+    draw: (c) ->
+      poly c, [[.5, 0], [-.5, -.4], [-.5, .4]]
+
+  arrow:
+    rotate: true
+    draw: (c) ->
+      poly c, [[.5,0], [0, .5], [0, .2], [-.5, .2], [-.5, -.2], [0, -.2], [0, -.5]]
+
+  bug:
+    rotate: true
+    draw: (c) ->
+      c.strokeStyle = c.fillStyle
+      c.lineWidth = .05
+      poly c, [[.4, .225], [.2, 0], [.4, -.225]]
+      c.stroke()
+      c.beginPath()
+      circ c, .12, 0, .26
+      circ c, -.05, 0, .26
+      circ c, -.27, 0, .4
+
+  pyramid:
+    rotate: false
+    draw: (c) ->
+      poly c, [[0, .5], [-.433, -.25], [.433, -.25]]
+
+  circle: # Note: NetLogo's dot is simply circle with a small size
+    shortcut: (c, x, y, s) ->
+      c.beginPath()
+      circ c, x, y, s
+      c.closePath()
+      c.fill()
+    rotate: false
+    draw: (c) ->
+      circ c, 0, 0, 1 # c.arc 0, 0,.5, 0, 2 * Math.PI
+
+  square:
+    shortcut: (c, x, y, s) ->
+      csq c, x, y, s
+    rotate: false
+    draw: (c) ->
+      csq c, 0, 0, 1 #c.fillRect -.5, -.5, 1 , 1
+
+  pentagon:
+    rotate: false
+    draw: (c) ->
+      poly c, [[0, .45], [-.45, .1], [-.3, -.45], [.3, -.45], [.45, .1]]
+
+  ring:
+    rotate: false
+    draw: (c) ->
+      circ c, 0, 0, 1
+      c.closePath()
+      ccirc c, 0, 0, .6
+
+  person:
+    rotate: false
+    draw: (c) ->
+      poly c, [
+        [.15, .2], [.3, 0], [.125, -.1], [.125, .05], [.1, -.15], [.25, -.5],
+        [.05, -.5], [0, -.25], [-.05, -.5], [-.25, -.5], [-.1, -.15],
+        [-.125, .05], [-.125, -.1], [-.3, 0], [-.15, .2]
+      ]
+      c.closePath()
+      circ c, 0, .35, .30
+
+  # Return a list of the available shapes, see above.
+  names: ->
+    array = new ABM.Array
+    for own name, val of @
+      if val.rotate? and val.draw?
+        array.push name
+    array
+
+  # Add your own shape. Will be included in names list.  Usage:
+  #
+  #     u.shapes.add "test", true, (c) -> # bowtie/hourglass
+  #       u.shapes.poly c, [[-.5, -.5], [.5, .5], [-.5, .5], [.5, -.5]]
+  #
+  # Note: an image that is not rotated automatically gets a shortcut. 
+  add: (name, rotate, draw, shortcut) -> # draw can be an image, shortcut defaults to null
+    if u.isFunction draw
+      shape = {rotate, draw}
+    else
+      shape = {rotate, img:draw, draw:(c) -> cimg c, .5, .5, 1, @img}
+
+    @[name] = shape
+
+    if shortcut? # can override img default shortcut if needed
+      shape.shortcut = shortcut
+    else if shape.img? and not shape.rotate
+      shape.shortcut = (c, x, y, s) ->
+        cimg c, x, y, s, @img
+
+  # Add local private objects for use by add() and debugging
+  poly:poly, circ:circ, ccirc:ccirc, cimg:cimg, csq:csq # export utils for use by add
+
+  spriteSheets:spriteSheets # export spriteSheets for debugging, showing in DOM
+
+  # Two draw procedures, one for shapes, the other for sprites made from shapes.
+  draw: (context, shape, x, y, size, rad, color) ->
+    if shape.shortcut?
+      context.fillStyle = u.colorString color unless shape.img?
+      shape.shortcut context, x, y, size
+    else
+      context.save()
+      context.translate x, y
+      context.scale size, size if size isnt 1
+      context.rotate rad if rad isnt 0
+      if shape.img? # is an image, not a path function
+        shape.draw context
+      else
+        context.fillStyle = u.colorString color
+        context.beginPath()
+        shape.draw context
+        context.closePath()
+        context.fill()
+      context.restore()
+    shape
+
+  drawSprite: (context, s, x, y, size, rad) ->
+    if rad is 0
+      context.drawImage s.context.canvas, s.x, s.y, s.bits, s.bits, x - size / 2,
+        y - size / 2, size, size
+    else
+      context.save()
+      context.translate x, y # see http://goo.gl/VUlhY for drawing centered rotated images
+      context.rotate rad
+      context.drawImage s.context.canvas, s.x, s.y, s.bits, s.bits, -size / 2,
+        -size / 2, size, size
+      context.restore()
+    s
+
+  # Convert a shape to a sprite by allocating a sprite sheet "slot" and drawing
+  # the shape to fit it. Return existing sprite if duplicate.
+  shapeToSprite: (name, color, size) ->
+    bits = Math.ceil ABM.patches.toBits size
+    shape = @[name]
+    index = if shape.img? then name else "#{name}-#{u.colorString(color)}"
+    context = spriteSheets[bits]
+
+    # Create sheet for this bit size if it does not yet exist
+    unless context?
+      spriteSheets[bits] = context = u.createContext bits * 10, bits
+      context.nextX = 0
+      context.nextY = 0
+      context.index = {}
+
+    # Return matching sprite if index match found
+    return foundSlot if (foundSlot = context.index[index])?
+
+    # Extend the sheet if we're out of space
+    if bits*context.nextX is context.canvas.width
+      u.resizeContext context, context.canvas.width, context.canvas.height + bits
+      context.nextX = 0
+      context.nextY++
+    # Create the sprite "slot" object and install in index object
+    x = bits * context.nextX
+    y = bits * context.nextY
+    slot = {context, x, y, size, bits, name, color, index}
+    context.index[index] = slot
+
+    # Draw the shape into the sprite slot
+    if (img = shape.img)? # is an image, not a path function
+      if img.height isnt 0 then fillSlot(slot, img)
+      else img.onload = -> fillSlot(slot, img)
+    else
+      context.save()
+      context.scale bits, bits
+      context.translate context.nextX + .5, context.nextY + .5
+      context.fillStyle = u.colorString color
+      context.beginPath()
+      shape.draw context
+      context.closePath()
+      context.fill()
+      context.restore()
+
+    context.nextX++
+    slot
+
+# An **ABM.AgentArray** is an array, with some agent/patch/link specific
+# helper methods.
+#
+# It is a subclass of `ABM.Array` and is the base class for `ABM.BreedSet`.
+
+class ABM.Set extends ABM.Array
+  # `from` is a static wrapper function converting an array into
+  # an `ABM.Set`
+  #
+  # It gains access to all the methods below. Ex:
+  #
+  #     array = [1, 2, 3]
+  #     ABM.Set.from(array)
+  #     randomNr = array.random()
+  @from: (array, setType = ABM.Set) ->
+    array.__proto__ = setType.prototype ? setType.constructor.prototype
+    array
+  
+  # The static `ABM.Set.from` as a method.
+  # Used by methods creating new sets.
+  from: (array, setType = @) ->
+    ABM.Set.from array, setType # setType = ABM.Set
+    # TODO see if can be removed
+
+  # In the examples below, we'll use an array of primitive agent objects
+  # with three fields: id, x, y.
+  #
+  #     AS = for i in [1..5] # long form comprehension
+  #       {id:i, x:u.randomInt(10), y:u.randomInt(10)}
+  #     ABM.Set.from AS # Convert AS to Set in place
+  #        [{id: 1, x: 0, y: 1}, {id: 2, x: 8, y: 0}, {id: 3, x: 6, y: 4},
+  #         {id: 4, x: 1, y: 3}, {id: 5, x: 1, y: 1}]
+
+  # Set the default value of an agent class, return agentset
+  setDefault: (name, value) ->
+    @agentClass::[name] = value
+    @
+
+  # Return all agents that are not of the given breeds argument.
+  # Breeds is a string of space separated names:
+  #   @patches.exclude "roads houses"
+  exclude: (breeds) ->
+    breeds = breeds.split(" ")
+    @from (o for o in @ when o.breed.name not in breeds)
+
+  # ### Drawing
+  
+  # For agentsets whose agents have a `draw` method.
+  # Clears the graphics context (transparent), then
+  # calls each agent's draw(context) method.
+  draw: (context) ->
+    u.clearContext(context)
+    o.draw(context) for o in @ when not o.hidden
+    null
+  
+  # Show/Hide all of an agentset or breed.
+  # To show/hide an individual object, set its prototype: o.hidden = bool
+  show: ->
+    o.hidden = false for o in @
+    @draw(ABM.contexts[@name])
+
+  hide: ->
+    o.hidden = true for o in @
+    @draw(ABM.contexts[@name])
+
+  # ### Location/radius
+  
+  # Return all agents within d distance from given object.
+  inRadius: (point, options) -> # for any objects w/ x, y
+    inner = new ABM.Set
+    for entity in @
+      if entity.distance(point) <= options.radius
+        inner.push entity
+    return inner
+      
+  # As above, but returns agents also limited to the angle `cone`
+  # around a `heading` from point.
+  inCone: (point, options) ->
+    inner = new ABM.Set
+    for entity in @
+      if u.inCone(options.heading, options.cone, options.radius,
+          point, entity.position, ABM.patches)
+        inner.push entity
+    return inner
+
+# A **BreedSet** is an ABM.Set (which is an ABM.Array), along with a
+# class, agentClass, whose instances are the items of the array.
+# Instances of the class are created by the `create` factory method of
+# a BreedSet.
+#
+# It is a subclass of `ABM.Set` and is the base class for `Patches`,
+# `Agents`, and `Links`. A Set keeps track of all its created
+# instances. It also provides, much like the **ABM.util** module, some
+# methods shared by all subclasses of Set.
 #
 # ABM contains three agentsets created by class Model:
 #
@@ -905,33 +1396,15 @@ ABM.util = u =
 # for explanation of the overall semantics of Agent Based Modeling
 # used by Sets as well as Patches, Agents, and Links.
 #
-# Note: subclassing `Array` can be dangerous and we may have to convert
-# to a different style. See Trevor Burnham's [comments](http://goo.gl/Lca8g)
-# but thus far we've resolved all related problems.
-#
 # Because we are an array subset, @[i] == this[i] == agentset[i]
 
-class ABM.Set extends Array
-  # ### Static members
-  
-  # `asSet` is a static wrapper function converting an array of agents into
-  # an `Set` .. except for the ID which only impacts the add method.
-  # It is primarily used to turn a comprehension into a Set instance
-  # which then gains access to all the methods below.  Ex:
-  #
-  #     evens = (a for a in ABM.agents when a.id % 2 is 0)
-  #     ABM.Set.asSet(evens)
-  #     randomEven = evens.random()
-  @asSet: (a, setType = ABM.Set) ->
-    a.__proto__ = setType.prototype ? setType.constructor.prototype # setType.__proto__
-    a
-  
+class ABM.BreedSet extends ABM.Set
   # In the examples below, we'll use an array of primitive agent objects
   # with three fields: id, x, y.
   #
   #     AS = for i in [1..5] # long form comprehension
   #       {id:i, x:u.randomInt(10), y:u.randomInt(10)}
-  #     ABM.Set.asSet AS # Convert AS to Set in place
+  #     ABM.BreedSet.from AS # Convert AS to Set in place
   #        [{id: 1, x: 0, y: 1}, {id: 2, x: 8, y: 0}, {id: 3, x: 6, y: 4},
   #         {id: 4, x: 1, y: 3}, {id: 5, x: 1, y: 1}]
 
@@ -945,68 +1418,69 @@ class ABM.Set extends Array
     @agentClass = agentClass
     @name = name
     @mainSet = mainSet
-    @breeds = [] unless @mainSet?
+    unless @mainSet?
+      # Do not set breeds & ID if I'm a subset
+      @breeds = []
+      @ID = 0
     @agentClass::breed = @ # let the breed know I'm it's agentSet
-    @ownVariables = [] # keep list of user variables
-    @ID = 0 unless @mainSet? # Do not set ID if I'm a subset
 
   # Abstract method used by subclasses to create and add their instances.
   create: ->
-    
-  # Add an agent to the list.  Only used by agentset factory methods. Adds
+
+  # Add an agent to the list. Only used by agentset factory methods. Adds
   # the `id` property to all agents. Increment `ID`.
   # Returns the object for chaining.
   #
   # By "agent" we mean an instance of `Patch`, `Agent` and `Link` and their breeds
-  add: (object) ->
-    if @mainSet?
-      @mainSet.add object
+  originalPush: @::push
+  push: (object...) ->
+    if object.length > 1
+      for item in object
+        @push item
     else
-      object.id = @ID++
-    @push object
+      object = object[0]
+      @originalPush object
+
+      if @mainSet?
+        @mainSet.push object
+      else
+        if object.id?
+          if object.breed? and object.breed.name is not @name
+            object.id = @ID++
+        else
+          object.id = @ID++
+
     object
 
+  # TODO remove
+  add: (object) ->
+    @push object
+
   # Remove an agent from the agentset, returning the agentset.
-  # Note this does not change ID, thus an
-  # agentset can have gaps in terms of their id's. 
+  # Note this does not change delete id or change the set's ID, thus
+  # an agentset can have gaps in terms of their id's. 
   #
   #     AS.remove(AS[3]) # [{id: 0, x: 0, y: 1}, {id: 1, x: 8, y: 0},
   #                         {id: 2, x: 6, y: 4}, {id: 4, x: 1, y: 1}] 
   remove: (object) ->
     if @mainSet?
-      u.remove @mainSet, object
-    u.remove @, object
+      @mainSet.remove object
+    u.array.remove @, object
     @
 
-  # Set the default value of an agent class, return agentset
-  setDefault: (name, value) -> @agentClass::[name] = value; @
+  pop: () ->
+    object = @last()
+    @remove(object)
+    object
 
-  # Declare variables of an agent class. 
-  # Vars = a string of space separated names or an array of name strings
-  # Return agentset.
-  own: (vars) -> # maybe not set default if val is null?
-    # vars = vars.split(" ") if not u.isArray vars
-    # for name in vars#.split(" ") # if not u.isArray vars
-    for name in vars.split(" ")
-      @setDefault name, null
-      @ownVariables.push name
-    @
-
-  # Move an agent from its Set/breed to be in this Set/breed.
-  # REMIND: match NetLogo sematics in terms of own variables.
-  setBreed: (a) -> # change agent a to be in this breed
-    u.remove a.breed, a
-    @.push a
-    proto = a.__proto__ = @agentClass.prototype
-    delete a[k] for own k, v of a when proto[k]?
-    a
-
-  # Return all agents that are not of the given breeds argument.
-  # Breeds is a string of space separated names:
-  #   @patches.exclude "roads houses"
-  exclude: (breeds) ->
-    breeds = breeds.split(" ")
-    @asSet (o for o in @ when o.breed.name not in breeds)
+  # Move an agent from its BreedSet to be in this BreedSet.
+  #
+  setBreed: (agent) ->
+    agent.breed.remove agent
+    @push agent
+    proto = agent.__proto__ = @agentClass.prototype
+    delete agent[key] for own key, value of agent when proto[key]?
+    agent
 
   # Floodfill arguments:
   #
@@ -1035,190 +1509,10 @@ class ABM.Set extends Array
     else return () =>
       @floodFillOnce asetNext, fCandidate, fJoin, fCallback, fNeighbors, aset
   
-  # Remove adjacent duplicates, by reference.
-  #
-  #     as = (AS.random() for i in [1..4]) # 4 random agents w/ dups
-  #     ABM.Set.asSet as # [{id: 1, x: 8, y: 0}, {id: 0, x: 0, y: 1},
-  #                              {id: 0, x: 0, y: 1}, {id: 2, x: 6, y: 4}]
-  #     as.uniq() # [{id: 0, x: 0, y: 1}, {id: 1, x: 8, y: 0}, 
-  #                  {id: 2, x: 6, y: 4}]
-  uniq: -> u.uniq(@)
-
-  # The static `ABM.Set.asSet` as a method.
-  # Used by agentset methods creating new agentsets.
-  asSet: (a, setType = @) -> ABM.Set.asSet a, setType # setType = ABM.Set
-
   # Similar to above but sorted via `id`.
-  asOrderedSet: (a) -> @asSet(a).sort("id")
-
-  # Return string representative of agentset.
-  toString: -> "[" + (a.toString() for a in @).join(", ") + "]"
-
-  # ### Property Utilities
-  # Property access, also useful for debugging<br>
-  
-  # Return an array of a property of the agentset
-  #
-  #      AS.getProp "x" # [0, 8, 6, 1, 1]
-  getProp: (prop) -> o[prop] for o in @
-
-  # Return an array of agents with the property equal to the given value
-  #
-  #     AS.getPropWith "x", 1
-  #     [{id: 4, x: 1, y: 3},{id: 5, x: 1, y: 1}]
-  getPropWith: (prop, value) -> @asSet (o for o in @ when o[prop] is value)
-
-  # Set the property of the agents to a given value.  If value
-  # is an array, its values will be used, indexed by agentSet's index.
-  # This is generally used via: getProp, modify results, setProp
-  #
-  #     # increment x for agents with x=1
-  #     AS1 = ABM.Set.asSet AS.getPropWith("x", 1)
-  #     AS1.setProp "x", 2 # {id: 4, x: 2, y: 3}, {id: 5, x: 2, y: 1}
-  #
-  # Note this changes the last two objects in the original AS above
-  setProp: (prop, value) ->
-    if u.isArray value
-      o[prop] = value[i] for o, i in @; @
-    else
-      o[prop] = value for o in @; @
-  
-  # ### Array Utilities, often from ABM.util
-
-  # Randomize the agentset
-  #
-  #     AS.shuffle(); AS.getProp "id" # [3, 2, 1, 4, 5] 
-  shuffle: -> u.shuffle @
-
-  # Sort the agentset
-  #
-  sort: (options...) -> u.sort @, options...
-
-  # Make a copy of an agentset, return as new agentset.<br>
-  # NOTE: does *not* duplicate the objects, simply creates a new agentset
-  # with references to the same agents.  Ex: create a randomized version of AS
-  # but without mangling AS itself:
-  #
-  #     as = AS.clone().shuffle()
-  #     AS.getProp "id"  # [1, 2, 3, 4, 5]
-  #     as.getProp "id"  # [2, 4, 0, 1, 3]
-  clone: -> @asSet u.clone @
-
-  # Return the last agent in the agentset
-  #
-  #     AS.last().id             # l5
-  #     l = AS.last(); p = [l.x, l.y] # [1, 1]
-  last: -> u.last @
-
-  # Returns true if the agentset has any agents
-  #
-  #     AS.any()  # true
-  #     AS.getPropWith("x", 99).any() #false
-  any: -> u.any @
-
-  # Return an agentset without given agent a
-  #
-  #     as = AS.clone().other(AS[0])
-  #     as.getProp "id"  # [1, 2, 3, 4] 
-  other: (a) -> @asSet (o for o in @ when o isnt a) # could clone & remove
-
-  # Return random agent in agentset or an agentset made of n distinct agents.
-  sample: (options...) ->
-    random = u.sample @, options...
-    if random and random.isArray
-      @asSet random
-    else
-      random
-
-  # Return agent when f(o) min/max in agentset. If multiple agents have
-  # min/max value, return the first. Error if agentset empty.
-  # If f is a string, return element with min/max value of that property.
-  # If "valueToo" then return an array of the agent and the value.
-  # 
-  #     AS.min("x") # {id: 0, x: 0, y: 1}
-  #     AS.max((a) -> a.x + a.y, true) # {id: 2, x: 6, y: 4}, 10
-  min: (f, valueToo = false) ->
-    u.min @, f, valueToo
-
-  max: (f, valueToo = false) ->
-    u.max @, f, valueToo
-
-  # ### Drawing
-  
-  # For agentsets whose agents have a `draw` method.
-  # Clears the graphics context (transparent), then
-  # calls each agent's draw(context) method.
-  draw: (context) ->
-    u.clearContext(context)
-    o.draw(context) for o in @ when not o.hidden
-    null
-  
-  # Show/Hide all of an agentset or breed.
-  # To show/hide an individual object, set its prototype: o.hidden = bool
-  show: ->
-    o.hidden = false for o in @
-    @draw(ABM.contexts[@name])
-
-  hide: ->
-    o.hidden = true for o in @
-    @draw(ABM.contexts[@name])
-
-  # ### Debugging
-  
-  # Useful in console.
-  # Also see [CoffeeConsole](http://goo.gl/1i7bd) Chrome extension.
-  
-  # Similar to NetLogo ask & with operators.
-  # Allows functions as strings. Use:
-  #
-  #     AS.getProp("x") # [1, 8, 6, 2, 2]
-  #     AS.with("o.x < 5").ask("o.x = o.x + 1")
-  #     AS.getProp("x") # [2, 8, 6, 3, 3]
-  #
-  #     ABM.agents.with("o.id < 100").ask("o.color = [255, 0, 0]")
-  ask: (f) ->
-    eval("f=function(o){return " + f + ";}") if u.isString f
-    f(o) for o in @; @
-
-  with: (f) ->
-    eval("f=function(o){return " + f + ";}") if u.isString f
-    @asSet (o for o in @ when f(o))
-
-# The example agentset AS used in the code fragments was made like this,
-# slightly more useful than shown above due to the toString method.
-#
-#     class XY
-#       constructor: (@x, @y) ->
-#       toString: -> "{id: #{@id}, x: #{@x}, y: #{@y}}"
-#     @AS = new ABM.Set # @ => global name space
-#
-# The result of 
-#
-#     AS.add new XY(u.randomInt(10), u.randomInt(10)) for i in [1..5]
-#
-# random run, captured so we can reuse.
-#
-#     AS.add new XY(pt...) for pt in [[0, 1], [8, 0], [6, 4], [1, 3], [1, 1]]
-
-  # Return all agents within d distance from given object.
-  inRadius: (entity1, options) -> # for any objects w/ x, y
-    inner = []
-    for entity2 in @
-      if entity1.distance(entity2) <= options.radius
-        inner.push entity2
-    @asSet inner
-      
-  # As above, but also limited to the angle `cone` around
-  # a `heading` from entity1
-  inCone: (entity1, options) ->
-    options.heading ?= entity1.heading
-    # if an agent, it will have heading
-    inner = []
-    for entity2 in @
-      if u.inCone(options.heading, options.cone, options.radius,
-          entity1, entity2, ABM.patches)
-        inner.push entity2
-    @asSet inner
+  # TODO remove
+  asOrderedSet: (a) ->
+    @from(a).sort("id")
 
 # ### Agent
   
@@ -1228,33 +1522,31 @@ class ABM.Set extends Array
 class ABM.Agent
   # Constructor & Class Variables:
   #
-  # * id:         unique identifier, promoted by agentset create() factory method
-  # * breed:      the agentset this agent belongs to
-  # * x,y:        position on the patch grid, in patch coordinates, default: 0, 0
-  # * size:       size of agent, in patch coords, default: 1
-  # * color:      the color of the agent, default: randomColor
-  # * shape:      the shape name of the agent, default: "default"
-  # * label:      a text label drawn on my instances
-  # * labelColor: the color of my label text
-  # * labelOffset:the x, y offset of my label from my x, y location
-  # * heading:    direction of the agent, in radians, from x-axis
-  # * hidden:     whether or not to draw this agent
-  # * patch:      patch at current x, y location
-  # * penDown:    true if agent pen is drawing
-  # * penSize:    size in pixels of the pen, default: 1 pixel
-  # * sprite:     an image of the agent if non null
-  # * cacheLinks: if true, keep array of links in/out of me
-  # * links:      array of links in/out of me.  Only used if @cacheLinks is true
+  # * id:          unique identifier, promoted by agentset create() factory method
+  # * breed:       the agentset this agent belongs to
+  # * x, y:        position on the patch grid, in patch coordinates, default: 0, 0
+  # * size:        size of agent, in patch coordinates, default: 1
+  # * color:       the color of the agent, default: randomColor
+  # * shape:       the shape name of the agent, default: "default"
+  # * label:       a text label drawn on my instances
+  # * labelColor:  the color of my label text
+  # * labelOffset: the x, y offset of my label from my x, y location
+  # * heading:     direction of the agent, in radians, from x-axis
+  # * hidden:      whether or not to draw this agent
+  # * patch:       patch at current x, y location
+  # * penDown:     true if agent pen is drawing
+  # * penSize:     size in pixels of the pen, default: 1 pixel
+  # * sprite:      an image of the agent if non null
+  # * links:       array of links in/out of me
   #
   # These class variables are "defaults" and many are "promoted" to instance variables.
   # To have these be set to a constant for all instances, use breed.setDefault.
   # This can be a huge savings in memory.
   id: null              # unique id, promoted by agentset create factory method
   breed: null           # my agentSet, set by the agentSet owning me
-  x: 0                  # my location
-  y: 0
+  position: null        # my location, has float .x & .y
   patch: null           # the patch I'm on
-  size: 1               # my size in patch coords
+  size: 1               # my size in patch coordinates
   color: null           # default color, overrides random color if set
   shape: "default"      # my shape
   hidden: false         # draw me?
@@ -1265,35 +1557,38 @@ class ABM.Agent
   penSize: 1            # the pen thickness in pixels
   heading: null         # the direction I'm pointed in, in radians
   sprite: null          # an image of me for optimized drawing
-  cacheLinks: false     # should I keep links to/from me in links array?.
   links: null           # array of links to/from me as an endpoint; init by ctor
 
   constructor: -> # called by agentSets create factory, not user
-    @x = @y = 0
+    @position = {x: 0, y: 0}
     @color = u.randomColor() unless @color? # promote color if default not set
     @heading = u.randomFloat(Math.PI * 2) unless @heading?
-    @links = [] if @cacheLinks
-    @setXY @x, @y
+    @links = new ABM.Array
+    @moveTo @position
 
-  # Set agent color to `color` scaled by `fraction`. Usage: see patch.fractionOfColor
-  fractionOfColor: (color, fraction) ->
-    @color = u.clone @color unless @.hasOwnProperty("color")
-    u.fractionOfColor color, fraction, @color
-  
+  # ### Strings
+
   # Return a string representation of the agent.
-  toString: -> "{id:#{@id} xy:#{u.aToFixed [@x, @y]} c:#{@color} h: #{@heading.toFixed 2}}"
+  toString: ->
+    "{id: #{@id}, position: {x: #{@position.x.toFixed 2}," +
+      " y: #{@position.y.toFixed 2}}, c: #{@color}, h: #{@heading.toFixed 2}}"
+
+  # ### Movement and space
   
-  # Place the agent at the given x, y (floats) in patch coords
-  # using patch topology (isTorus)
-  setXY: (x, y) -> # REMIND GC problem, 2 arrays
-    [x0, y0] = [@x, @y] if @penDown
-    [@x, @y] = ABM.patches.coord x, y
+  # Place the agent at the given patch/agent location
+  #
+  # Place the agent at the given point (floats) in patch coordinates using
+  # patch topology (isTorus)
+  moveTo: (point) ->
+    if @penDown
+      [x0, y0] = [@position.x, @position.y]
+
+    @position = ABM.patches.coordinate point
     oldPatch = @patch
-    @patch = ABM.patches.patch @x, @y
+    @patch = ABM.patches.patch @position
 
-    if oldPatch
-      u.remove oldPatch.agents, @
-
+    if oldPatch and oldPatch isnt @patch
+      oldPatch.agents.remove @
     @patch.agents.push @
 
     if @penDown
@@ -1302,36 +1597,128 @@ class ABM.Agent
       drawing.lineWidth = ABM.patches.fromBits @penSize
       drawing.beginPath()
       drawing.moveTo x0, y0
-      drawing.lineTo x, y # REMIND: euclidean
+      drawing.lineTo @position.x, @position.y # REMIND: euclidean
       drawing.stroke()
 
-  losePosition: ->
-    u.remove @patch.agents, @
-    @patch = null
-  
-  # Place the agent at the given patch/agent location
-  moveTo: (patch) -> @setXY patch.x, patch.y
-  
-  # Move forward (along heading) d units (patch coords),
+  # Moves the agent off the grid, making him lose his patch
+  moveOff: ->
+    if @patch
+      @patch.agents.remove @
+    @patch = @position = null
+
+  # Move forward (along heading) by distance units (patch coordinates),
   # using patch topology (isTorus)
-  forward: (d) ->
-    @setXY @x + d * Math.cos(@heading), @y + d * Math.sin(@heading)
+  forward: (distance) ->
+    @moveTo(
+      x: @position.x + distance * Math.cos(@heading),
+      y: @position.y + distance * Math.sin(@heading))
   
   # Change current heading by radians which can be + (left) or - (right)
   rotate: (radians) ->
     @heading = u.wrap @heading + radians, 0, Math.PI * 2 # returns new h
   
+  # Set heading towards given agent/patch using patch topology.
+  face: (point) ->
+    @heading = u.angle @position, point, ABM.patches
+
+  # Return distance in patch coordinates from me to given agent/patch
+  # using patch topology (isTorus)
+  distance: (point) -> # o any object w/ x, y, patch or agent
+    u.distance @position, point, ABM.patches
+
+  # Returns the neighbors (agents) of this agent
+  neighbors: (options) ->
+    options ?= 1
+    if options.radius
+      square = @neighbors(options.radius)
+      if options.cone
+        options.heading ?= @heading
+        # adopt heading unless explicitly given
+        neighbors = square.inCone(@position, options)
+      else
+        neighbors = square.inRadius(@position, options)
+    else
+      neighbors = @breed.from []
+      if @patch
+        for patch in @patch.neighbors(options)
+          for agent in patch.agents
+            if agent isnt @
+              neighbors.push agent
+
+    neighbors
+
+  # ### Life and death
+
+  # Remove myself from the model. Includes removing myself from the
+  # agents agentset and removing any links I may have.
+  die: ->
+    @breed.remove @
+    for link in @links
+      link.die()
+    @moveOff()
+    null
+
+  # Factory: create num new agents at this agents location. The optional init
+  # proc is called on the new agent after inserting in its agentSet.
+  hatch: (number = 1, breed = ABM.agents, init = ->) ->
+    breed.create number, (agent) => # fat arrow so that @ = this agent
+      agent.moveTo @position # for side effects like patches.agents
+      for own key, value of @ when key isnt "id"
+        agent[key] = value
+      init(agent) # Important: init called after object inserted in agent set
+      agent
+
+  # ### Links
+
+  # Return other end of link from me
+  otherEnd: (link) ->
+    if link.from is @
+      link.to
+    else
+      link.from
+ 
+  # Return links where I am the "from" agent in links.create
+  outLinks: ->
+    link for link in @links when link.from is @
+ 
+  # Return links where I am the "to" agent in links.create
+  inLinks: ->
+    link for link in @links when link.to is @
+
+  # All agents linked to me.
+  linkNeighbors: ->
+    array = new ABM.Array
+    for link in @links
+      array.push @otherEnd(link)
+    array.uniq()
+ 
+  # Other end of myInLinks
+  inLinkNeighbors: ->
+    array = new ABM.Array
+    for link in @inLinks()
+      array.push link.from
+    array.uniq()
+ 
+  # Other end of myOutinks
+  outLinkNeighbors: ->
+    array = new ABM.Array
+    for link in @outLinks()
+      array.push link.to
+    array.uniq()
+
+  # ### Drawing
+
   # Draw the agent, instanciating a sprite if required
   draw: (context) ->
     if @patch is null
       return
-    shape = ABM.shapes[@shape]
+    shape = u.shapes[@shape]
     radians = if shape.rotate then @heading else 0 # radians
     if @sprite? or @breed.useSprites
       @setSprite() unless @sprite? # lazy evaluation of useSprites
-      ABM.shapes.drawSprite context, @sprite, @x, @y, @size, radians
+      u.shapes.drawSprite context, @sprite, @position.x, @position.y, @size, radians
     else
-      ABM.shapes.draw context, shape, @x, @y, @size, radians, @color
+      u.shapes.draw context, shape, @position.x, @position.y, @size, radians, @color
     if @label?
       [x, y] = ABM.patches.patchXYtoPixelXY @x, @y
       u.contextDrawText context, @label, x + @labelOffset[0], y + @labelOffset[1], @labelColor
@@ -1345,123 +1732,40 @@ class ABM.Agent
       @size = sprite.size
     else
       @color = u.randomColor unless @color?
-      @sprite = ABM.shapes.shapeToSprite @shape, @color, @size
+      @sprite = u.shapes.shapeToSprite @shape, @color, @size
     
   # Draw the agent on the drawing layer, leaving permanent image.
   stamp: -> @draw ABM.drawing
-  
-  # Return the closest torus topology point of given agent/patch 
-  # relative to myself. 
-  # Used internally to determine how to draw links between two agents.
-  # See util.torusPoint.
-  closestTorusPoint: (point) ->
-    u.closestTorusPoint @, point, ABM.patches.numX, ABM.patches.numY
-
-  # Return angle towards given agent/patch using patch topology.
-  angleTowards: (point) ->
-    u.radiansToward @, point, ABM.patches
-
-  # Set heading towards given agent/patch using patch topology.
-  face: (point) ->
-    @heading = @angleTowards point
-  
-  # Return distance in patch coords from me to given agent/patch
-  # using patch topology (isTorus)
-  distance: (point) -> # o any object w/ x, y, patch or agent
-    u.distance @, point, ABM.patches
-
-  # Returns the neighbors (agents) of this agent
-  neighbors: (options) ->
-    options ?= 1
-    if options.radius
-      square = @neighbors(options.radius)
-      if options.cone
-        neighbors = square.inCone(@, options)
-      else
-        neighbors = square.inRadius(@, options)
-    else
-      neighbors = @breed.asSet []
-      if @patch
-        for patch in @patch.neighbors(options)
-          for agent in patch.agents
-            if agent isnt @
-              neighbors.push agent
-    neighbors
-
-  # Remove myself from the model. Includes removing myself from the
-  # agents agentset and removing any links I may have.
-  die: ->
-    @breed.remove @
-    for l in @myLinks()
-      l.die()
-    if @patch.agents?
-      u.remove @patch.agents, @
-    null
-
-  # Factory: create num new agents at this agents location. The optional init
-  # proc is called on the new agent after inserting in its agentSet.
-  hatch: (num = 1, breed = ABM.agents, init = ->) ->
-    breed.create num, (a) => # fat arrow so that @ = this agent
-      a.setXY @x, @y # for side effects like patches.agents
-      a[k] = v for own k, v of @ when k isnt "id"
-      init(a) # Important: init called after object inserted in agent set
-      a
-
-  # Return other end of link from me
-  otherEnd: (l) -> if l.end1 is @ then l.end2 else l.end1
-
-  # Return all links linked to me
-  myLinks: ->
-    @links ? (l for l in ABM.links when (l.end1 is @) or (l.end2 is @))
-  
-  # Return all agents linked to me.
-  linkNeighbors: -> # return all agents linked to me
-    @otherEnd l for l in @myLinks()
-  
-  # Return links where I am the "to" agent in links.create
-  myInLinks: ->
-    l for l in @myLinks() when l.end2 is @
-
-  # Return other end of myInLinks
-  inLinkNeighbors: ->
-    l.end1 for l in @myLinks() when l.end2 is @
-    
-  # Return links where I am the "from" agent in links.create
-  myOutLinks: ->
-    l for l in @myLinks() when l.end1 is @
-  
-  # Return other end of myOutinks
-  outLinkNeighbors: ->
-    l.end2 for l in @myLinks() when l.end1 is @
 
 # ### Agents
 
 # Class Agents is a subclass of Set which stores instances of Agent or 
 # Breeds, which are subclasses of Agent
-class ABM.Agents extends ABM.Set
+class ABM.Agents extends ABM.BreedSet
   # Constructor creates the empty Set instance and installs
   # the agentClass (breed) variable shared by all the Agents in this set.
   constructor: -> # agentClass, name, mainSet
     super # call super with all the args I was called with
     @useSprites = false
 
-  # Have agents cache the links with them as a node.
-  # Optimizes Agent a.myLinks method. Call before any agents created.
-  cacheLinks: ->
-    @agentClass::cacheLinks = true # all agents, not individual breeds
-
   # Use sprites rather than drawing
   setUseSprites: (@useSprites = true) ->
   
   # Filter to return all instances of this breed. Note: if used by
   # the mainSet, returns just the agents that are not subclassed breeds.
-  in: (array) ->
-    @asSet (o for o in array when o.breed is @)
+  in: (agents) ->
+    array = []
+
+    for agent in agents
+      if agent.breed is @
+        array.push agent
+
+    @from array
 
   # Factory: create num new agents stored in this agentset. The optional init
   # proc is called on the new agent after inserting in its agentSet.
-  create: (num, init = ->) -> # returns array of new agents too
-    ((o) -> init(o); o) @add new @agentClass for i in [1..num] by 1 # too tricky?
+  create: (num, initialize = ->) -> # returns array of new agents too
+    ((o) -> initialize(o); o) @add new @agentClass for i in [1..num] by 1 # too tricky?
     # TODO refactor!
 
   # Remove all agents from set via agent.die()
@@ -1472,9 +1776,24 @@ class ABM.Agents extends ABM.Set
   
   # Return the members of this agentset that are neighbors of agent
   # using patch topology
-  neighboring: (agent, rangeOptions)->
+  neighboring: (agent, rangeOptions) ->
     array = agent.neighbors(rangeOptions)
-    if @mainSet? then @in array else @asSet array
+    @in array
+
+  # Circle Layout: position the agents in the list in an equally
+  # spaced circle of the given radius, with the initial agent
+  # at the given start angle (default to pi / 2 or "up") and in the
+  # +1 or -1 direction (counder clockwise or clockwise) 
+  # defaulting to -1 (clockwise).
+  formCircle: (radius, startAngle = Math.PI / 2, direction = -1) ->
+    dTheta = 2 * Math.PI / @.length
+
+    for agent, i in @
+      agent.moveTo x: 0, y: 0
+      agent.heading = startAngle + direction * dTheta * i
+      agent.forward radius
+
+    null
 
 # Class Model is the control center for our Sets: Patches, Agents and Links.
 # Creating new models is done by subclassing class Model and overriding two 
@@ -1598,7 +1917,8 @@ class ABM.Link
   #
   # * id:         unique identifier, promoted by agentset create() factory method
   # * breed:      the agentset this agent belongs to
-  # * end1, end2: two agents being connected
+  # * from:       two agents being connected
+  # * to:
   # * color:      defaults to light gray
   # * thickness:  thickness in pixels of the link, default 2
   # * label:      a text label drawn on my instances
@@ -1608,19 +1928,20 @@ class ABM.Link
 
   id: null               # unique id, promoted by agentset create factory method
   breed: null            # my agentSet, set by the agentSet owning me
-  end1:null; end2:null   # My two endpoints, using agents. Promoted by ctor
+  from: null              # My two endpoints, using agents. Promoted by ctor
+  to: null
   color: [130, 130, 130] # my color
   thickness: 2           # my thickness in pixels, default to 2
   hidden: false          # draw me?
   label: null            # my text
   labelColor: [0, 0, 0]  # its color
   labelOffset: [0, 0]    # its offset from my midpoint
-  constructor: (@end1, @end2) ->
-    if @end1.links?
-      @end1.links.push @
-      @end2.links.push @
+
+  constructor: (@from, @to) ->
+    @from.links.push @
+    @to.links.push @
       
-  # Draw a line between the two endpoints.  Draws "around" the
+  # Draw a line between the two endpoints. Draws "around" the
   # torus if appropriate using two lines. As with Agent.draw,
   # is called with patch coordinate transform installed.
   draw: (context) ->
@@ -1628,49 +1949,60 @@ class ABM.Link
     context.strokeStyle = u.colorString @color
     context.lineWidth = ABM.patches.fromBits @thickness
     context.beginPath()
+
     if !ABM.patches.isTorus
-      context.moveTo @end1.x, @end1.y
-      context.lineTo @end2.x, @end2.y
+      context.moveTo @from.position.x, @from.position.y
+      context.lineTo @to.position.x, @to.position.y
     else
-      pt = @end1.closestTorusPoint @end2
-      context.moveTo @end1.x, @end1.y
-      context.lineTo pt...
-      if pt[0] isnt @end2.x or pt[1] isnt @end2.y
-        pt = @end2.closestTorusPoint @end1
-        context.moveTo @end2.x, @end2.y
-        context.lineTo pt...
+      point = u.closestTorusPoint @from.position, @to.position,
+        ABM.patches.numX, ABM.patches.numY
+      context.moveTo @from.position.x, @from.position.y
+      context.lineTo point.x, point.y
+      if point.x isnt @to.position.x or point.y isnt @to.position.y
+        point = u.closestTorusPoint @to.position, @from.position,
+          ABM.patches.numX, ABM.patches.numY
+        context.moveTo @to.position.x, @to.position.y
+        context.lineTo point.x, point.y
+
     context.closePath()
     context.stroke()
     context.restore()
+
     if @label?
-      x0 = u.linearInterpolate @end1.x, @end2.x, .5
-      y0 = u.linearInterpolate @end1.y, @end2.y, .5
+      x0 = u.linearInterpolate @from.position.x, @to.position.x, .5
+      y0 = u.linearInterpolate @from.position.y, @to.position.y, .5
       [x, y] = ABM.patches.patchXYtoPixelXY x0, y0
       u.contextDrawText context, @label, x + @labelOffset[0], y + @labelOffset[1], @labelColor
   
   # Remove this link from the agent set
   die: ->
     @breed.remove @
-    u.remove @end1.links, @ if @end1.links?
-    u.remove @end2.links, @ if @end2.links?
+    @from.links.remove @
+    @to.links.remove @
     null
   
   # Return the two endpoints of this link
-  bothEnds: -> [@end1, @end2]
+  bothEnds: ->
+    new ABM.Array(@from, @to)
   
   # Return the distance between the endpoints with the current topology.
-  length: -> @end1.distance @end2
+  length: ->
+    @from.distance @to.position
   
   # Return the other end of the link, given an endpoint agent.
   # Assumes the given input *is* one of the link endpoint pairs!
-  otherEnd: (a) -> if @end1 is a then @end2 else @end1
+  otherEnd: (a) ->
+    if @from is a 
+      @to
+    else
+      @from
 
 # ### Links
   
 # Class Links is a subclass of Set which stores instances of Link
 # or subclasses of Link
 
-class ABM.Links extends ABM.Set
+class ABM.Links extends ABM.BreedSet
   # Constructor: super creates the empty Set instance and installs
   # the agentClass (breed) variable shared by all the Links in this set.
   constructor: -> # agentClass, name, mainSet
@@ -1685,32 +2017,26 @@ class ABM.Links extends ABM.Set
   
   # Remove all links from set via link.die()
   # Note call in reverse order to optimize list restructuring.
-  clear: -> @last().die() while @any(); null # tricky, each die modifies list
+  clear: ->
+    while @any()
+      @last().die()
+
+    null # tricky, each die modifies list
 
   # Return all the nodes in this agentset, with duplicates
   # included.  If 4 links have the same endpoint, it will
   # appear 4 times.
-  allEnds: -> # all link ends, w / dups
-    n = @asSet []
-    n.push l.end1, l.end2 for l in @
-    n
+  nodesWithDups: -> # all link ends, w / dups
+    set = new ABM.Set
+
+    for link in @
+      set.push link.from, link.to
+
+    set
 
   # Returns all the nodes in this agentset with duplicates removed.
-  nodes: -> # allEnds without dups
-    @allEnds().uniq()
-  
-  # Circle Layout: position the agents in the list in an equally
-  # spaced circle of the given radius, with the initial agent
-  # at the given start angle (default to pi / 2 or "up") and in the
-  # +1 or -1 direction (counder clockwise or clockwise) 
-  # defaulting to -1 (clockwise).
-  layoutCircle: (list, radius, startAngle = Math.PI / 2, direction = -1) ->
-    dTheta = 2 * Math.PI / list.length
-    for a, i in list
-      a.setXY 0, 0
-      a.heading = startAngle + direction*dTheta*i
-      a.forward radius
-    null
+  nodes: ->
+    @nodesWithDups().uniq()
 
 # Class Model is the control center for our Sets: Patches, Agents and Links.
 # Creating new models is done by subclassing class Model and overriding two 
@@ -1720,7 +2046,7 @@ class ABM.Links extends ABM.Set
 
 ABM.models = {} # user space, put your models here
 
-class ABM.Model
+ABM.model = class ABM.Model
   # Class variable for layers parameters. 
   # Can be added to by programmer to modify/create layers, **before** starting your own model.
   # Example:
@@ -1737,22 +2063,13 @@ class ABM.Model
   #
   # * create agentsets, install them and ourselves in ABM global namespace
   # * create layers/contexts, install drawing layer in ABM global namespace
-  # * setup patch coord transforms for each layer context
+  # * setup patch coordinate transforms for each layer context
   # * intialize various instance variables
   # * call `setup` abstract method
-  constructor: (divOrOptions, size = 13, minX = -16, maxX = 16, minY = -16,
-      maxY = 16, isTorus = false, hasNeighbors = true, isHeadless = false) ->
-
-    ABM.model = @
-
-    if typeof divOrOptions is 'string'
-      div = divOrOptions
-      @setWorldDeprecated size, minX, maxX, minY, maxY, isTorus, hasNeighbors,
-        isHeadless
-    else
-      div = divOrOptions.div
-      isHeadless = divOrOptions.isHeadless = divOrOptions.isHeadless? or not div?
-      @setWorld divOrOptions
+  constructor: (options) ->
+    div = options.div
+    isHeadless = options.isHeadless = options.isHeadless? or not div?
+    @setWorld options
 
     @contexts = ABM.contexts = {}
 
@@ -1761,17 +2078,17 @@ class ABM.Model
         "position:relative; width:#{@world.pxWidth}px; height:#{@world.pxHeight}px"
 
       # * Create 2D canvas contexts layered on top of each other.
-      # * Initialize a patch coord transform for each layer.
+      # * Initialize a patch coordinate transform for each layer.
       # 
       # Note: this transform is permanent .. there isn't the usual context.restore().
       # To use the original canvas 2D transform temporarily:
       #
       #     u.setIdentity context
-      #       <draw in native coord system>
-      #     context.restore() # restore patch coord system
-      for own k, v of @contextsInit
-        @contexts[k] = context = u.createLayer @div, @world.pxWidth,
-          @world.pxHeight, v.z, v.context
+      #       <draw in native coordinate system>
+      #     context.restore() # restore patch coordinate system
+      for own key, value of @contextsInit
+        @contexts[key] = context = u.createLayer @div, @world.pxWidth,
+          @world.pxHeight, value.z, value.context
         if context.canvas?
           @setContextTransform context
         if context.canvas?
@@ -1807,6 +2124,7 @@ class ABM.Model
     @globalNames = u.ownKeys @
     @globalNames.set = false
     @startup()
+
     u.waitOnFiles =>
       @modelReady = true
       @setup()
@@ -1815,55 +2133,41 @@ class ABM.Model
   # Initialize/reset world parameters.
   setWorld: (options) ->
     defaults = {
-      size: 13, minX: -16, maxX: 16, minY: -16, maxY: 16, isTorus: false,
-      hasNeighbors: true, isHeadless: false
-    }
+      patchSize: 13, mapSize: 32, isTorus: false, hasNeighbors: true,
+      isHeadless: false}
 
     for own key, value of defaults
       options[key] ?= value
+
+    options.min ?= {x: -1 * options.mapSize / 2, y: -1 * options.mapSize / 2}
+    options.max ?= {x: options.mapSize / 2, y: options.mapSize / 2}
+    options.mapSize = null # not passed on, because optional
 
     ABM.world = @world = {}
 
     for own key, value of options
       @world[key] = value
 
-    @world.numX = @world.maxX - @world.minX + 1
-    @world.numY = @world.maxY - @world.minY + 1
-    @world.pxWidth = @world.numX * @world.size
-    @world.pxHeight = @world.numY * @world.size
-    @world.minXcor = @world.minX - .5
-    @world.maxXcor = @world.maxX + .5
-    @world.minYcor = @world.minY - .5
-    @world.maxYcor = @world.maxY + .5
-
-  setWorldDeprecated: (size, minX, maxX, minY, maxY, isTorus, hasNeighbors,
-      isHeadless) ->
-    numX = maxX - minX + 1
-    numY = maxY - minY + 1
-    pxWidth = numX * size
-    pxHeight = numY * size
-    minXcor = minX - .5
-    maxXcor = maxX + .5
-    minYcor = minY - .5
-    maxYcor = maxY + .5
-    ABM.world = @world = {
-      size, minX, maxX, minY, maxY, minXcor, maxXcor, minYcor, maxYcor, numX,
-      numY, pxWidth, pxHeight, isTorus, hasNeighbors, isHeadless
-    }
+    @world.width = @world.max.x - @world.min.x + 1
+    @world.height = @world.max.y - @world.min.y + 1
+    @world.pxWidth = @world.width * @world.patchSize
+    @world.pxHeight = @world.height * @world.patchSize
+    @world.minCoordinate = {x: @world.min.x - .5, y: @world.min.y - .5}
+    @world.maxCoordinate = {x: @world.max.x + .5, y: @world.max.y + .5}
 
   setContextTransform: (context) ->
     context.canvas.width = @world.pxWidth
     context.canvas.height = @world.pxHeight
     context.save()
-    context.scale @world.size, -@world.size
-    context.translate -(@world.minXcor), -(@world.maxYcor)
+    context.scale @world.patchSize, -@world.patchSize
+    context.translate -(@world.minCoordinate.x), -(@world.maxCoordinate.y)
 
   globals: (globalNames) ->
     if globalNames?
       @globalNames = globalNames
       @globalNames.set = true
     else
-      @globalNames = u.removeItems u.ownKeys(@), @globalNames
+      @globalNames = u.ownKeys(@).removeItems @globalNames
 
 #### Optimizations:
   
@@ -1879,10 +2183,6 @@ class ABM.Model
   # Don't use if patch breeds have different colors.
   setMonochromePatches: -> @patches.monochrome = true
     
-  # Have agents cache the links with them as a node.
-  # Optimizes Agent a.myLinks method
-  setCacheMyLinks: -> @agents.cacheLinks()
-  
 #### User Model Creation
 # A user's model is made by subclassing Model and over-riding these
 # two abstract methods. `super` need not be called.
@@ -1927,6 +2227,7 @@ class ABM.Model
     @animator.once()
     @
 
+  # TODO rationalize as just stop & start, stop as pause if needed
   # Stop and reset the model, restarting if restart is true
 #  reset: (restart = false) ->
 #    console.log "reset: animator"
@@ -1939,7 +2240,7 @@ class ABM.Model
 #    console.log "reset: agents"
 #    @agents = ABM.agents = new ABM.Agents ABM.Agent, "agents"
 #    @links = ABM.links = new ABM.Links ABM.Link, "links"
-#    u.s.spriteSheets.length = 0 # possibly null out entries?
+#    u.shapes.spriteSheets.length = 0 # possibly null out entries?
 #    console.log "reset: setup"
 #    @setup()
 #    @setRootVars() if @debugging
@@ -2033,12 +2334,6 @@ class ABM.Model
   linkBreeds: (list, agentClass = ABM.Link, breedSet = ABM.Links) ->
     @createBreeds list, 'links', agentClass, breedSet
   
-  # Utility for models to create agentsets from arrays.  Ex:
-  #
-  #     even = @asSet (a for a in @agents when a.id % 2 is 0)
-  #     even.shuffle().getProp("id") # [6, 0, 4, 2, 8]
-  asSet: (a, setType = ABM.Set) -> ABM.Set.asSet a, setType
-
   # A simple debug aid which places short names in the global name space.
   # Note we avoid using the actual name, such as "patches" because this
   # can cause our modules to mistakenly depend on a global name.
@@ -2047,6 +2342,7 @@ class ABM.Model
     u.waitOn (=> @modelReady), (=> @setRootVars())
     @
 
+  # TODO get rid of
   setRootVars: ->
     root.ps  = @patches
     root.p0  = @patches[0]
@@ -2072,7 +2368,7 @@ class ABM.Patch
   # Constructor & Class Variables:
   # * id:          unique identifier, promoted by agentset create() factory method
   # * breed:       the agentset this agent belongs to
-  # * x, y:        position on the patch grid, in patch coordinates
+  # * position:    position on the patch grid, .x and .y in patch coordinates
   # * color:       the color of the patch as an RGBA array, A optional.
   # * hidden:      whether or not to draw this patch
   # * label:       text for the patch
@@ -2081,8 +2377,7 @@ class ABM.Patch
 
   id: null              # unique id, promoted by agentset create factory method
   breed: null           # set by the agentSet owning this patch
-  x: null               # The patch position in the patch grid
-  y: null
+  position: null        # The patch position in the patch grid, in .x and .y
   color: [0, 0, 0]      # The patch color
   hidden: false         # draw me?
   label: null           # text for the patch
@@ -2091,108 +2386,129 @@ class ABM.Patch
   agents: null          # agents on this patch
   
   # New Patch: Just set x, y.
-  constructor: (@x, @y) ->
+  #constructor: (@x, @y) ->
+  constructor: (@position) ->
     @neighborsCache = {}
-    @agents = []
+    @agents = new ABM.Array
 
   # Return a string representation of the patch.
-  toString: -> "{id:#{@id} xy:#{[@x, @y]} c:#{@color}}"
+  toString: ->
+    "{id:#{@id} position: {x: #{@position.x}, y: #{@position.y}}," +
+    "c: #{@color}}"
 
-  # Set patch color to `c` scaled by `fraction`. Usage:
-  #
-  #     patch.fractionOfColor patch.color, .8 # reduce patch color by .8
-  #     patch.fractionOfColor @foodColor, patch.foodPheromone # ants model
-  #
-  # Promotes color if currently using the default.
-  fractionOfColor: (color, fraction) ->
-    @color = u.clone @color unless @.hasOwnProperty("color")
-    u.fractionOfColor color, fraction, @color
-  
   # Draw the patch and its text label if there is one.
   draw: (context) ->
     context.fillStyle = u.colorString @color
-    context.fillRect @x - .5, @y - .5, 1, 1
+    context.fillRect @position.x - .5, @position.y - .5, 1, 1
     if @label? # REMIND: should be 2nd pass.
-      [x, y] = @breed.patchXYtoPixelXY @x, @y
-      u.contextDrawText context, @label, x + @labelOffset[0], y + @labelOffset[1],
-        @labelColor
+      position = @breed.patchXYtoPixelXY @position
+      u.contextDrawText context, @label, position.x + @labelOffset[0],
+        position.y + @labelOffset[1], @labelColor
   
   empty: ->
-    u.empty @agents
+    @agents.empty()
 
   # Returns true if this patch is on the edge of the grid.
   isOnEdge: ->
-    @x is @breed.minX or @x is @breed.maxX or \
-    @y is @breed.minY or @y is @breed.maxY
+    @position.x is @breed.min.x or @position.x is @breed.max.x or \
+    @position.y is @breed.min.y or @position.y is @breed.max.y
   
   # Factory: Create num new agents on this patch. The optional init
   # proc is called on the new agent after inserting in its agentSet.
   sprout: (number = 1, breed = ABM.agents, init = ->) ->
     breed.create number, (agent) => # fat arrow so that @ = this patch
-      agent.setXY @x, @y
+      agent.moveTo @position
       init(agent)
       agent
 
-  # Return distance in patch coords from me to given agent/patch
+  # Return distance in patch coordinates from me to given agent/patch
   # using patch topology (isTorus)
   distance: (point) -> # o any object w/ x, y, patch or agent
-    u.distance @, point, ABM.patches
+    u.distance @position, point, ABM.patches
 
   # Get neighbors for patch
   neighbors: (options) ->
     options ?= 1
-    cacheKey = JSON.stringify(options)
-    neighbors = @neighborsCache[cacheKey]
+
+    if u.isNumber(options)
+      options = {range: options}
+
+    if not options.cache? or options.cache
+      cacheKey = JSON.stringify(options)
+      neighbors = @neighborsCache[cacheKey]
+
     if not neighbors?
       if options.radius
-        square = @neighbors(options.radius)
+        square = @neighbors(range: options.radius, meToo: options.meToo,
+          cache: options.cache)
         if options.cone
-          neighbors = square.inCone(@, options)
+          neighbors = square.inCone(@position, options)
+          unless options.cache
+            cacheKey = null
+            # cone has variable heading, better not cache by default
         else
-          neighbors = square.inRadius(@, options)
+          neighbors = square.inRadius(@position, options)
       else if options.diamond
-        neighbors = @diamondNeighbors(options.diamond, options)
+        neighbors = @diamondNeighbors(options.diamond, options.meToo)
       else
-        neighbors = @breed.patchRectangle(@, options, options)
+        neighbors = @breed.patchRectangle(@, options.range, options.range, options.meToo)
+  
+      if cacheKey?
+        @neighborsCache[cacheKey] = neighbors
 
-      @neighborsCache[cacheKey] = neighbors
     return neighbors
 
   # Not to be used directly, will not cache.
-  diamondNeighbors: (range) ->
+  diamondNeighbors: (range, meToo) ->
     neighbors = @breed.patchRectangleNullPadded @, range, range, true
-    diamond = []
+    diamond = new ABM.Set
     counter = 0
     row = 0
     column = -1
     span = range * 2 + 1
+
     for neighbor in neighbors
       row = counter % span
       if row == 0
         column += 1
       distanceColumn = Math.abs(column - range)
       distanceRow = Math.abs(row - range)
-      if distanceRow + distanceColumn <= range and distanceRow + distanceColumn != 0
+      if distanceRow + distanceColumn <= range and
+          (meToo or distanceRow + distanceColumn != 0)
         diamond.push neighbor
       counter += 1
-    u.remove(diamond, null)
-    return @breed.asSet diamond
+
+    diamond.remove(null)
+
+    return diamond
 
 # ### Patches
   
 # Class Patches is a singleton 2D matrix of Patch instances, each patch 
-# representing a 1x1 square in patch coordinates (via 2D coord transforms).
+# representing a 1x1 square in patch coordinates (via 2D coordinate transforms).
 #
 # From ABM.world, set in Model:
 #
-# * size:         pixel h/w of each patch.
-# * minX/maxX:    min/max x coord in patch coords
-# * minY/maxY:    min/max y coord in patch coords
-# * numX/numY:    width/height of grid.
-# * isTorus:      true if coord system wraps around at edges
-# * isHeadless:   true if not using canvas drawing
+# * patchSize:     pixel h/w of each patch
+# * min:           .x & .y, minimum patch coordinate, integer
+# * max:           .x & .y, maximum patch coordinate, integer
+# * width:         width of grid
+# * height:        height of grid
+# * isTorus:       true if coordinate system wraps around at edges
+# * isHeadless:    true if not using canvas drawing
+# * minCoordinate: .x & .y, maximum float coordinate (calculated)
+# * maxCoordinate: .x & .y, maximum float coordinate (calculated)
 
-class ABM.Patches extends ABM.Set
+# TODO
+# minX
+# maxX
+# minY
+# maxY
+# numX, width
+# numY, height
+# minXcor, etc
+
+class ABM.Patches extends ABM.BreedSet
   # Constructor: super creates the empty Set instance and installs
   # the agentClass (breed) variable shared by all the Patches in this set.
   # Patches are created from top-left to bottom-right to match data sets.
@@ -2205,125 +2521,110 @@ class ABM.Patches extends ABM.Set
   # Note that this is done as separate method so like other agentsets,
   # patches are started up empty and filled by "create" calls.
   create: -> # TopLeft to BottomRight, exactly as canvas imagedata
-    for y in [@maxY..@minY] by -1
-      for x in [@minX..@maxX] by 1
-        @add new @agentClass x, y
+    for y in [@max.y..@min.y] by -1
+      for x in [@min.x..@max.x] by 1
+        @add new @agentClass x: x, y: y
     @setPixels() unless @isHeadless # setup off-page canvas for pixel ops
     @
     
-  # Draw patches using scaled image of colors. Note anti-aliasing may occur
-  # if browser does not support smoothing flags.
-  usePixels: (@drawWithPixels = true) ->
-    context = ABM.contexts.patches
-    u.setContextSmoothing context, not @drawWithPixels
-
-  # Setup pixels used for `drawScaledPixels` and `importColors`
-  # 
-  setPixels: ->
-    if @size is 1
-      @usePixels()
-      @pixelsContext = ABM.contexts.patches
+  # #### Patch grid coordinate system utilities:
+  
+  # Return patch at x, y float values according to topology.
+  patch: (point) ->
+    if @isCoordinate(point, @min, @max)
+      coordinate = point
     else
-      @pixelsContext = u.createContext @numX, @numY
+      coordinate = @coordinate(point, @min, @max)
 
-    @pixelsImageData = @pixelsContext.getImageData(0, 0, @numX, @numY)
-    @pixelsData = @pixelsImageData.data
+    rounded = x: Math.round(coordinate.x), y: Math.round(coordinate.y)
 
-    if @pixelsData instanceof Uint8Array # Check for typed arrays
-      @pixelsData32 = new Uint32Array @pixelsData.buffer
-      @pixelsAreLittleEndian = u.isLittleEndian()
-  
-  # Draw patches.  Three cases:
-  #
-  # * Pixels: use pixel manipulation rather than canvas draws
-  # * Monochrome: just fill canvas w/ patch default
-  # * Otherwise: just draw each patch individually
-  draw: (context) ->
-    if @monochrome
-      u.fillContext context, @agentClass::color
-    else if @drawWithPixels
-      @drawScaledPixels context
-    else
-      super context
+    @[@patchIndex rounded]
 
-# #### Patch grid coord system utilities:
-  
-  # Return the patch id/index given integer x, y in patch coords
-  patchIndex: (x, y) -> x - @minX + @numX * (@maxY - y)
-
-  # Return the patch at matrix position x, y where 
-  # x & y are both valid integer patch coordinates.
-  patchXY: (x, y) -> @[@patchIndex x, y]
-  
-  # Return x, y float values to be between min/max patch coord values
-  clamp: (x, y) ->
-    [u.clamp(x, @minXcor, @maxXcor), u.clamp(y, @minYcor, @maxYcor)]
-  
-  # Return x, y float values to be modulo min/max patch coord values.
-  wrap: (x, y) ->
-    [u.wrap(x, @minXcor, @maxXcor), u.wrap(y, @minYcor, @maxYcor)]
-  
   # Return x, y float values to be between min/max patch values
   # using either clamp/wrap above according to isTorus topology.
-  coord: (x, y) -> #returns a valid world coord (real, not int)
-    if @isTorus then @wrap x, y else @clamp x, y
+  # returns a valid world coordinate (real, not int)
+  coordinate: (point, minPoint = @minCoordinate, maxPoint = @maxCoordinate) ->
+    if @isTorus
+      @wrap point, minPoint, maxPoint
+    else
+      @clamp point, minPoint, maxPoint
 
-  # Return true if on world or torus, false if non-torus and off-world
-  isOnWorld: (x, y) ->
-    @isTorus or (@minXcor <= x <= @maxXcor and @minYcor <= y <= @maxYcor)
-
-  # Return patch at x, y float values according to topology.
-  patch: (x, y) ->
-    [x, y] = @coord x, y
-    x = u.clamp Math.round(x), @minX, @maxX
-    y = u.clamp Math.round(y), @minY, @maxY
-    @patchXY x, y
+  # Return x, y float values to be between min/max patch coordinate values
+  clamp: (point, minPoint = @minCoordinate, maxPoint = @maxCoordinate) ->
+    {
+      x: u.clamp(point.x, minPoint.x, maxPoint.x),
+      y: u.clamp(point.y, minPoint.y, maxPoint.y)
+    }
   
-  # Return a random valid float x, y point in patch space
-  randomPoint: ->
-    [u.randomFloat(@minXcor, @maxXcor), u.randomFloat(@minYcor, @maxYcor)]
+  # Return x, y float values to be modulo min/max patch coordinate values.
+  wrap: (point, minPoint = @minCoordinate, maxPoint = @maxCoordinate) ->
+    {
+      x: u.wrap(point.x, minPoint.x, maxPoint.x),
+      y: u.wrap(point.y, minPoint.y, maxPoint.y)
+    }
+  
+  # Returns true if the points x, y float values are between min/max
+  # patch values
+  isCoordinate: (point, minPoint = @minCoordinate, maxPoint = @maxCoordinate) ->
+    minPoint.x <= point.x <= maxPoint.x and minPoint.y <= point.y <= maxPoint.y
 
-# #### Patch metrics
+  # Return true if on world or torus, false if non-torus and
+  # off-world. Because toruses wrap.
+  isOnWorld: (point) ->
+    @isTorus or @isCoordinate(point)
+
+  # Return the patch id/index given integer x, y in patch coordinates
+  patchIndex: (point) ->
+    point.x - @min.x + @width * (@max.y - point.y)
+
+  # Return a random valid float {x, y} point in patch space
+  randomPoint: ->
+    {x: u.randomFloat(@minCoordinate.x, @maxCoordinate.x), y: u.randomFloat(@minCoordinate.y, @maxCoordinate.y)}
+
+  # #### Patch metrics
   
   # Convert patch measure to pixels
   toBits: (patch) ->
-    patch * @size
+    patch * @patchSize
 
   # Convert bit measure to patches
-  fromBits: (b) -> b / @size
+  fromBits: (bit) ->
+    bit / @patchSize
 
-# #### Patch utilities
+  # #### Patch utilities
   
   # Return an array of patches in a rectangle centered on the given 
   # patch `patch`, dx, dy units to the right/left and up/down. 
   # Exclude `patch` unless meToo is true, default false.
   patchRectangle: (patch, dx, dy, meToo = false) ->
     rectangle = @patchRectangleNullPadded(patch, dx, dy, meToo)
-    u.remove(rectangle, null)
+
+    rectangle.remove(null)
 
   patchRectangleNullPadded: (patch, dx, dy, meToo = false) ->
-    rectangle = []; # REMIND: optimize if no wrapping, rectangle inside patch boundaries
-    for y in [(patch.y - dy)..(patch.y + dy)] by 1 # by 1: perf: avoid bidir JS for loop
-      for x in [(patch.x - dx)..(patch.x + dx)] by 1
+    rectangle = new ABM.Set
+    # REMIND: optimize if no wrapping, rectangle inside patch boundaries
+    for y in [(patch.position.y - dy)..(patch.position.y + dy)] by 1 # by 1: perf: avoid bidir JS for loop
+      for x in [(patch.position.x - dx)..(patch.position.x + dx)] by 1
         nextPatch = null
         if @isTorus
-          if x < @minX
-            x += @numX
-          if x > @maxX
-            x -= @numX
-          if y < @minY
-            y += @numY
-          if y > @maxY
-            y -= @numY
-          nextPatch = @patchXY x, y
-        else if x >= @minX and x <= @maxX and
-            y >= @minY and y <= @maxY
-          nextPatch = @patchXY x, y
+          if x < @min.x
+            x += @width
+          if x > @max.x
+            x -= @width
+          if y < @min.y
+            y += @height
+          if y > @max.y
+            y -= @height
+          nextPatch = @patch x: x, y: y
+        else if x >= @min.x and x <= @max.x and
+            y >= @min.y and y <= @max.y
+          nextPatch = @patch x: x, y: y
 
         if (meToo or patch isnt nextPatch)
           rectangle.push nextPatch
 
-    @asSet rectangle
+    return rectangle
 
   # Draws, or "imports" an image URL into the drawing layer.
   # The image is scaled to fit the drawing layer.
@@ -2346,15 +2647,20 @@ class ABM.Patches extends ABM.Set
   # Utility function for pixel manipulation.  Given a patch, returns the 
   # native canvas index i into the pixel data.
   # The top-left order simplifies finding pixels in data sets
-  pixelByteIndex: (patch) -> 4 * patch.id # Uint8
+  pixelByteIndex: (patch) ->
+    4 * patch.id # Uint8
 
-  pixelWordIndex: (patch) -> patch.id   # Uint32
+  pixelWordIndex: (patch) ->
+    patch.id   # Uint32
 
-  # Convert pixel location (top/left offset i.e. mouse) to patch coords (float)
-  pixelXYtoPatchXY: (x, y) -> [@minXcor + (x / @size), @maxYcor - (y / @size)]
+  # Convert pixel location (top/left offset i.e. mouse) to patch coordinates (float)
+  pixelXYtoPatchXY: (x, y) ->
+    [@minCoordinate.x + (x / @patchSize), @maxCoordinate.y - (y / @patchSize)]
 
-  # Convert patch coords (float) to pixel location (top/left offset i.e. mouse)
-  patchXYtoPixelXY: (x, y) -> [( x - @minXcor) * @size, (@maxYcor - y) * @size]
+  # TODO refactor
+  # Convert patch coordinates (float) to pixel location (top/left offset i.e. mouse)
+  patchXYtoPixelXY: (x, y) ->
+    [(x - @minCoordinate.x) * @patchSize, (@maxCoordinate.y - y) * @patchSize]
     
   # Draws, or "imports" an image URL into the patches as their color property.
   # The drawing is scaled to the number of x, y patches, thus one pixel
@@ -2368,8 +2674,8 @@ class ABM.Patches extends ABM.Set
   # Direct install image into the patch colors, not async.
   installColors: (img, map) ->
     u.setIdentity @pixelsContext
-    @pixelsContext.drawImage img, 0, 0, @numX, @numY # scale if needed
-    data = @pixelsContext.getImageData(0, 0, @numX, @numY).data
+    @pixelsContext.drawImage img, 0, 0, @width, @height # scale if needed
+    data = @pixelsContext.getImageData(0, 0, @width, @height).data
     for patch in @
       i = @pixelByteIndex patch
       # promote initial default
@@ -2379,12 +2685,12 @@ class ABM.Patches extends ABM.Set
   # Draw the patches via pixel manipulation rather than 2D drawRect.
   # See Mozilla pixel [manipulation article](http://goo.gl/Lxliq)
   drawScaledPixels: (context) ->
-    # u.setIdentity context & context.restore() only needed if patch size 
-    # not 1, pixel ops don't use transform but @size>1 uses
+    # u.setIdentity context & context.restore() only needed if patchSize 
+    # not 1, pixel ops don't use transform but @patchSize > 1 uses
     # a drawimage
-    u.setIdentity context if @size isnt 1
+    u.setIdentity context if @patchSize isnt 1
     if @pixelsData32? then @drawScaledPixels32 context else @drawScaledPixels8 context
-    context.restore() if @size isnt 1
+    context.restore() if @patchSize isnt 1
 
   # The 8-bit version for drawScaledPixels.  Used for systems w/o typed arrays
   drawScaledPixels8: (context) ->
@@ -2399,7 +2705,7 @@ class ABM.Patches extends ABM.Set
       data[i + j] = c[j] for j in [0..2]
       data[i + 3] = a
     @pixelsContext.putImageData @pixelsImageData, 0, 0
-    return if @size is 1
+    return if @patchSize is 1
     context.drawImage @pixelsContext.canvas, 0, 0, context.canvas.width, context.canvas.height
 
   # The 32-bit version of drawScaledPixels, with both little and big endian hardware.
@@ -2413,7 +2719,7 @@ class ABM.Patches extends ABM.Set
       then data[i] = (a << 24) | (c[2] << 16) | (c[1] << 8) | c[0]
       else data[i] = (c[0] << 24) | (c[1] << 16) | (c[2] << 8) | a
     @pixelsContext.putImageData @pixelsImageData, 0, 0
-    return if @size is 1
+    return if @patchSize is 1
     context.drawImage @pixelsContext.canvas, 0, 0, context.canvas.width, context.canvas.height
 
   floodFillOnce: (aset, fCandidate, fJoin, fCallback, fNeighbors = ((patch) -> patch.n),
@@ -2441,231 +2747,42 @@ class ABM.Patches extends ABM.Set
       patch[v] = patch._diffuseNext
       patch._diffuseNext = 0
       if c
-        patch.fractionOfColor c, patch[v]
+        patch.color = u.fractionOfColor c, patch[v]
     null # avoid returning copy of @
 
-# A *very* simple shapes module for drawing
-# [NetLogo-like](http://ccl.northwestern.edu/netlogo/docs/) agents.
+  # ### Drawing
 
-ABM.shapes = ABM.util.s = do ->
-  # Each shape is a named object with two members: 
-  # a boolean rotate and a draw procedure and two optional
-  # properties: img for images, and shortcut for a transform-less version of draw.
-  # The shape is used in the following context with a color set
-  # and a transform such that the shape should be drawn in a -.5 to .5 square
-  #
-  #     context.save()
-  #     context.fillStyle = u.colorString color
-  #     context.translate x, y; context.scale size, size;
-  #     context.rotate heading if shape.rotate
-  #     context.beginPath(); shape.draw(context); context.closePath()
-  #     context.fill()
-  #     context.restore()
-  #
-  # The list of current shapes, via `ABM.shapes.names()` below, is:
-  #
-  #     ["default", "triangle", "arrow", "bug", "pyramid", 
-  #      "circle", "square", "pentagon", "ring", "cup", "person"]
+  # Draw patches using scaled image of colors. Note anti-aliasing may occur
+  # if browser does not support smoothing flags.
+  usePixels: (@drawWithPixels = true) ->
+    context = ABM.contexts.patches
+    u.setContextSmoothing context, not @drawWithPixels
+
+  # Setup pixels used for `drawScaledPixels` and `importColors`
+  # 
+  setPixels: ->
+    if @patchSize is 1
+      @usePixels()
+      @pixelsContext = ABM.contexts.patches
+    else
+      @pixelsContext = u.createContext @width, @height
+
+    @pixelsImageData = @pixelsContext.getImageData(0, 0, @width, @height)
+    @pixelsData = @pixelsImageData.data
+
+    if @pixelsData instanceof Uint8Array # Check for typed arrays
+      @pixelsData32 = new Uint32Array @pixelsData.buffer
+      @pixelsAreLittleEndian = u.isLittleEndian()
   
-  # A simple polygon utility:  c is the 2D context, and a is an array of 2D points.
-  # c.closePath() and c.fill() will be called by the calling agent, see initial 
-  # discription of drawing context.  It is used in adding a new shape above.
-  poly = (c, a) ->
-    for p, i in a
-      if i is 0 then c.moveTo p[0], p[1] else c.lineTo p[0], p[1]
-    null
-
-  # Centered drawing primitives: centered on x,y with a given width/height size.
-  # Useful for shortcuts
-  circ = (c, x, y, s) -> c.arc x, y, s / 2, 0, 2 * Math.PI # centered circle
-
-  ccirc = (c, x, y, s) -> c.arc x, y, s / 2, 0, 2 * Math.PI, true # centered counter clockwise circle
-
-  cimg = (c, x, y, s, img) ->
-    c.scale 1,-1
-    c.drawImage img, x - s / 2, y - s / 2, s, s
-    c.scale 1,-1 # centered image
-
-  csq = (c, x, y, s) -> c.fillRect x - s / 2, y - s / 2, s, s # centered square
-  
-  # An async util for delayed drawing of images into sprite slots
-  fillSlot = (slot, img) ->
-    slot.context.save()
-    slot.context.scale 1, -1
-    slot.context.drawImage img, slot.x, -(slot.y + slot.bits), slot.bits, slot.bits
-    slot.context.restore()
-
-  # The spritesheet data, indexed by bits
-  spriteSheets = []
-  
-  # The module returns the following object:
-  default:
-    rotate: true
-    draw: (c) -> poly c, [[.5, 0], [-.5, -.5], [-.25, 0], [-.5, .5]]
-
-  triangle:
-    rotate: true
-    draw: (c) -> poly c, [[.5, 0], [-.5, -.4],[-.5, .4]]
-
-  arrow:
-    rotate: true
-    draw: (c) ->
-      poly c, [[.5,0], [0, .5], [0, .2], [-.5, .2], [-.5, -.2], [0, -.2], [0, -.5]]
-
-  bug:
-    rotate: true
-    draw: (c) ->
-      c.strokeStyle = c.fillStyle
-      c.lineWidth = .05
-      poly c, [[.4, .225], [.2, 0], [.4, -.225]]
-      c.stroke()
-      c.beginPath()
-      circ c, .12, 0, .26
-      circ c, -.05, 0, .26
-      circ c, -.27, 0, .4
-
-  pyramid:
-    rotate: false
-    draw: (c) -> poly c, [[0, .5], [-.433, -.25], [.433, -.25]]
-
-  circle: # Note: NetLogo's dot is simply circle with a small size
-    shortcut: (c, x, y, s) ->
-      c.beginPath()
-      circ c, x, y, s
-      c.closePath()
-      c.fill()
-    rotate: false
-    draw: (c) -> circ c, 0, 0, 1 # c.arc 0, 0,.5, 0, 2 * Math.PI
-
-  square:
-    shortcut: (c, x, y, s) -> csq c, x, y, s
-    rotate: false
-    draw: (c) -> csq c, 0, 0, 1 #c.fillRect -.5, -.5, 1 , 1
-
-  pentagon:
-    rotate: false
-    draw: (c) ->
-      poly c, [[0, .45], [-.45, .1], [-.3, -.45], [.3, -.45], [.45, .1]]
-
-  ring:
-    rotate: false
-    draw: (c) ->
-      circ c, 0, 0, 1
-      c.closePath()
-      ccirc c, 0, 0, .6
-
-  person:
-    rotate: false
-    draw: (c) ->
-      poly c, [
-        [.15, .2], [.3, 0], [.125, -.1], [.125, .05], [.1, -.15], [.25, -.5],
-        [.05, -.5], [0, -.25], [-.05, -.5], [-.25, -.5], [-.1, -.15],
-        [-.125, .05], [-.125, -.1], [-.3, 0], [-.15, .2]
-      ]
-      c.closePath()
-      circ c, 0, .35, .30
-
-  # Return a list of the available shapes, see above.
-  names: ->
-    (name for own name, val of @ when val.rotate? and val.draw?)
-
-  # Add your own shape. Will be included in names list.  Usage:
+  # Draw patches.  Three cases:
   #
-  #     ABM.shapes.add "test", true, (c) -> # bowtie/hourglass
-  #       ABM.shapes.poly c, [[-.5, -.5], [.5, .5], [-.5, .5], [.5, -.5]]
-  #
-  # Note: an image that is not rotated automatically gets a shortcut. 
-  add: (name, rotate, draw, shortcut) -> # draw can be an image, shortcut defaults to null
-    if u.isFunction draw
-      s = {rotate, draw}
+  # * Pixels: use pixel manipulation rather than canvas draws
+  # * Monochrome: just fill canvas w/ patch default
+  # * Otherwise: just draw each patch individually
+  draw: (context) ->
+    if @monochrome
+      u.fillContext context, @agentClass::color
+    else if @drawWithPixels
+      @drawScaledPixels context
     else
-      s = {rotate, img:draw, draw:(c) -> cimg c, .5, .5, 1, @img}
-
-    @[name] = s
-
-    if shortcut? # can override img default shortcut if needed
-      s.shortcut = shortcut
-    else if s.img? and not s.rotate
-      s.shortcut = (c, x, y, s) ->
-        cimg c, x, y, s, @img
-
-  # Add local private objects for use by add() and debugging
-  poly:poly, circ:circ, ccirc:ccirc, cimg:cimg, csq:csq # export utils for use by add
-
-  spriteSheets:spriteSheets # export spriteSheets for debugging, showing in DOM
-
-  # Two draw procedures, one for shapes, the other for sprites made from shapes.
-  draw: (context, shape, x, y, size, rad, color) ->
-    if shape.shortcut?
-      context.fillStyle = u.colorString color unless shape.img?
-      shape.shortcut context, x, y, size
-    else
-      context.save()
-      context.translate x, y
-      context.scale size, size if size isnt 1
-      context.rotate rad if rad isnt 0
-      if shape.img? # is an image, not a path function
-        shape.draw context
-      else
-        context.fillStyle = u.colorString color
-        context.beginPath()
-        shape.draw context
-        context.closePath()
-        context.fill()
-      context.restore()
-    shape
-
-  drawSprite: (context, s, x, y, size, rad) ->
-    if rad is 0
-      context.drawImage s.context.canvas, s.x, s.y, s.bits, s.bits, x-size / 2,
-        y-size / 2, size, size
-    else
-      context.save()
-      context.translate x, y # see http://goo.gl/VUlhY for drawing centered rotated images
-      context.rotate rad
-      context.drawImage s.context.canvas, s.x, s.y, s.bits, s.bits, -size / 2,
-        -size / 2, size, size
-      context.restore()
-    s
-
-  # Convert a shape to a sprite by allocating a sprite sheet "slot" and drawing
-  # the shape to fit it. Return existing sprite if duplicate.
-  shapeToSprite: (name, color, size) ->
-    bits = Math.ceil ABM.patches.toBits size
-    shape = @[name]
-    index = if shape.img? then name else "#{name}-#{u.colorString(color)}"
-    context = spriteSheets[bits]
-    # Create sheet for this bit size if it does not yet exist
-    unless context?
-      spriteSheets[bits] = context = u.createContext bits * 10, bits
-      context.nextX = 0
-      context.nextY = 0
-      context.index = {}
-    # Return matching sprite if index match found
-    return foundSlot if (foundSlot = context.index[index])?
-    # Extend the sheet if we're out of space
-    if bits*context.nextX is context.canvas.width
-      u.resizeContext context, context.canvas.width, context.canvas.height + bits
-      context.nextX = 0
-      context.nextY++
-    # Create the sprite "slot" object and install in index object
-    x = bits * context.nextX
-    y = bits * context.nextY
-    slot = {context, x, y, size, bits, name, color, index}
-    context.index[index] = slot
-    # Draw the shape into the sprite slot
-    if (img = shape.img)? # is an image, not a path function
-      if img.height isnt 0 then fillSlot(slot, img)
-      else img.onload = -> fillSlot(slot, img)
-    else
-      context.save()
-      context.scale bits, bits
-      context.translate context.nextX + .5, context.nextY + .5
-      context.fillStyle = u.colorString color
-      context.beginPath()
-      shape.draw context
-      context.closePath()
-      context.fill()
-      context.restore()
-    context.nextX++
-    slot
+      super context

@@ -36,10 +36,12 @@
 
         for patch in @patches.create()
           if @type is ABM.TYPES.enclave
-            if patch.y > 0
+            if patch.position.y > 0
               patch.color = u.randomGray(180, 204)
+              console.log 'bigger'
             else
               patch.color = u.randomGray(234, 255)
+              console.log 'smaller'
           else
             patch.color = u.randomGray(224, 255)
 
@@ -87,7 +89,7 @@
 
           citizen.imprison = (sentence) ->
             @prisonSentence = sentence
-            @losePosition()
+            @moveOff()
 
           citizen.imprisoned = ->
             @prisonSentence > 0
@@ -126,12 +128,14 @@
               empty = @randomEmptyNeighbor()
               if @model.type is ABM.TYPES.enclave
                 if empty and (@riskAversion > 0.5 and
-                    (empty.y > 0 or empty.y < 0 and empty.y > @patch.y)) or
+                    (empty.position.y > 0 or empty.position.y < 0 and
+                      empty.position.y > @patch.position.y)) or
                     (@riskAversion < 0.5 and
-                    (empty.y < 0 or empty.y > 0 and empty.y < @patch.y))
+                    (empty.position.y < 0 or empty.position.y > 0 and
+                      empty.position.y < @patch.position.y))
                   empty = @randomEmptyNeighbor()
 
-              @moveTo(empty) if empty
+              @moveTo(empty.position) if empty
               @activate()
 
         for cop in @cops.create @copDensity * space
@@ -160,7 +164,7 @@
 
           cop.act = ->
             empty = @randomEmptyNeighbor()
-            @moveTo(empty) if empty
+            @moveTo(empty.position) if empty
             @makeArrest()
 
         @ui = new UI(this, plotDiv: "#graph")
@@ -191,6 +195,7 @@
         @agents.shuffle()
         for agent in @agents
           agent.act()
+
         @ui.drawPlot(@animator.ticks)
 
         #@spriteSheet()
@@ -211,7 +216,7 @@
         @sprite = null
 
       moveToRandomEmptyLocation: ->
-        @moveTo(@model.patches.sample((patch) -> patch.empty()))
+        @moveTo(@model.patches.sample((patch) -> patch.empty()).position)
 
       randomEmptyNeighbor: (type = ABM.TYPES.normal) ->
         @patch.neighbors(@vision).sample((patch) -> patch.empty())
@@ -263,14 +268,10 @@
         @plotter.draw()
 
     window.initialize = (type) ->
-      mapRadius = 20
       window.model = new Model({
         div: "model",
-        size: 20,
-        minX: -1 * mapRadius,
-        maxX: mapRadius,
-        minY: -1 * mapRadius,
-        maxY: mapRadius,
+        patchSize: 20,
+        mapSize: 30
         isTorus: true,
         hasNeighbors: true,
         type: type

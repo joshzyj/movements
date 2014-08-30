@@ -2,8 +2,8 @@
 (function() {
   var ABM, root, u, _base,
     __hasProp = {}.hasOwnProperty,
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __slice = [].slice,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -33,19 +33,6 @@
     });
   })();
 
-  (_base = Array.prototype).indexOf || (_base.indexOf = function(object) {
-    var i, x, _i, _len;
-    for (i = _i = 0, _len = this.length; _i < _len; i = ++_i) {
-      x = this[i];
-      if (x === object) {
-        return i;
-      }
-    }
-    return -1;
-  });
-
-  Array.prototype._sort = Array.prototype.sort;
-
   ABM.util = u = {
     error: function(string) {
       throw new Error(string);
@@ -65,8 +52,8 @@
       purple: [128, 0, 128],
       brown: [165, 42, 42]
     },
-    isArray: Array.isArray || function(object) {
-      return !!(object && obj.concat && object.unshift && !object.callee);
+    isArray: function(object) {
+      return !!(object && object.concat && object.unshift && !object.callee);
     },
     isFunction: function(object) {
       return !!(object && object.constructor && object.call && object.apply);
@@ -199,12 +186,9 @@
     randomBrightColor: function() {
       return this.randomMapColor([0, 127, 255]);
     },
-    fractionOfColor: function(maxColor, fraction, color) {
-      var i, value, _i, _len;
-      if (color == null) {
-        color = [];
-      }
-      color.string = null;
+    fractionOfColor: function(maxColor, fraction) {
+      var color, i, value, _i, _len;
+      color = [];
       for (i = _i = 0, _len = maxColor.length; _i < _len; i = ++_i) {
         value = maxColor[i];
         color[i] = this.clamp(Math.round(value * fraction), 0, 255);
@@ -260,339 +244,60 @@
       return angle;
     },
     ownKeys: function(object) {
-      var key, value, _results;
-      _results = [];
-      for (key in object) {
-        if (!__hasProp.call(object, key)) continue;
-        value = object[key];
-        _results.push(key);
-      }
-      return _results;
-    },
-    ownVariableKeys: function(object) {
-      var key, value, _results;
-      _results = [];
-      for (key in object) {
-        if (!__hasProp.call(object, key)) continue;
-        value = object[key];
-        if (!this.isFunction(value)) {
+      var key, value;
+      return ABM.Array.from((function() {
+        var _results;
+        _results = [];
+        for (key in object) {
+          if (!__hasProp.call(object, key)) continue;
+          value = object[key];
           _results.push(key);
         }
-      }
-      return _results;
+        return _results;
+      })());
+    },
+    ownVariableKeys: function(object) {
+      var key, value;
+      return ABM.Array.from((function() {
+        var _results;
+        _results = [];
+        for (key in object) {
+          if (!__hasProp.call(object, key)) continue;
+          value = object[key];
+          if (!this.isFunction(value)) {
+            _results.push(key);
+          }
+        }
+        return _results;
+      }).call(this));
     },
     ownValues: function(object) {
-      var key, value, _results;
-      _results = [];
-      for (key in object) {
-        if (!__hasProp.call(object, key)) continue;
-        value = object[key];
-        _results.push(value);
-      }
-      return _results;
-    },
-    toFixed: function(array, precision) {
-      var newArray, number, _i, _len;
-      if (precision == null) {
-        precision = 2;
-      }
-      newArray = [];
-      for (_i = 0, _len = array.length; _i < _len; _i++) {
-        number = array[_i];
-        newArray.push(number.toFixed(precision));
-      }
-      return newArray;
-    },
-    any: function(array) {
-      return !u.empty(array);
-    },
-    empty: function(array) {
-      return array.length === 0;
-    },
-    clone: function(array, begin, end) {
-      var method;
-      if (begin == null) {
-        begin = null;
-      }
-      if (end == null) {
-        end = null;
-      }
-      if (array.slice != null) {
-        method = "slice";
-      } else {
-        method = "subarray";
-      }
-      if (begin != null) {
-        return array[method](begin, end);
-      } else {
-        return array[method](0);
-      }
-    },
-    last: function(array) {
-      if (this.empty(array)) {
-        this.error("last: empty array");
-      }
-      return array[array.length - 1];
-    },
-    sample: function(array, numberOrCondition, condition) {
-      var checked, newArray, number, object;
-      if (numberOrCondition == null) {
-        numberOrCondition = null;
-      }
-      if (condition == null) {
-        condition = null;
-      }
-      if (this.isFunction(numberOrCondition)) {
-        condition = numberOrCondition;
-      } else if (numberOrCondition != null) {
-        number = Math.floor(numberOrCondition);
-      }
-      if (number != null) {
-        newArray = [];
-        object = true;
-        while (newArray.length < number && (object != null)) {
-          object = this.sample(array, condition);
-          if (object && __indexOf.call(newArray, object) < 0) {
-            newArray.push(object);
-          }
+      var key, value;
+      return ABM.Array.from((function() {
+        var _results;
+        _results = [];
+        for (key in object) {
+          if (!__hasProp.call(object, key)) continue;
+          value = object[key];
+          _results.push(value);
         }
-        return newArray;
-      } else if (condition != null) {
-        checked = [];
-        while (checked.length < array.length) {
-          object = this.sample(array);
-          if (object && __indexOf.call(checked, object) < 0) {
-            checked.push(object);
-            if (condition(object)) {
-              return object;
-            }
-          }
-        }
-      } else {
-        if (this.empty(array)) {
-          return null;
-        }
-        return array[this.randomInt(array.length)];
-      }
+        return _results;
+      })());
     },
-    contains: function(array, object) {
-      return array.indexOf(object) >= 0;
-    },
-    remove: function(array, object) {
-      var index;
-      while (true) {
-        index = array.indexOf(object);
-        if (index === -1) {
-          break;
-        }
-        array.splice(index, 1);
-      }
-      return array;
-    },
-    removeItems: function(array, objects) {
-      var object, _i, _len;
-      for (_i = 0, _len = objects.length; _i < _len; _i++) {
-        object = objects[_i];
-        this.remove(array, object);
-      }
-      return array;
-    },
-    shuffle: function(array) {
-      return array.sort(function() {
-        return 0.5 - Math.random();
-      });
-    },
-    min: function(array, lambda, valueToo) {
-      var minObject, minValue, object, value, _i, _len;
-      if (lambda == null) {
-        lambda = this.identityFunction;
-      }
-      if (valueToo == null) {
-        valueToo = false;
-      }
-      if (this.empty(array)) {
-        this.error("min: empty array");
-      }
-      if (this.isString(lambda)) {
-        lambda = this.propertyFunction(lambda);
-      }
-      minValue = Infinity;
-      minObject = null;
-      for (_i = 0, _len = array.length; _i < _len; _i++) {
-        object = array[_i];
-        value = lambda(object);
-        if (value < minValue) {
-          minValue = value;
-          minObject = object;
-        }
-      }
-      if (valueToo) {
-        return [minObject, minValue];
-      } else {
-        return minObject;
-      }
-    },
-    max: function(array, lambda, valueToo) {
-      var maxObject, maxValue, object, value, _i, _len;
-      if (lambda == null) {
-        lambda = this.identityFunction;
-      }
-      if (valueToo == null) {
-        valueToo = false;
-      }
-      if (this.empty(array)) {
-        this.error("max: empty array");
-      }
-      if (this.isString(lambda)) {
-        lambda = this.propertyFunction(lambda);
-      }
-      maxValue = -Infinity;
-      maxObject = null;
-      for (_i = 0, _len = array.length; _i < _len; _i++) {
-        object = array[_i];
-        value = lambda(object);
-        if (value > maxValue) {
-          maxValue = value;
-          maxObject = object;
-        }
-      }
-      if (valueToo) {
-        return [maxObject, maxValue];
-      } else {
-        return maxObject;
-      }
-    },
-    sum: function(array, lambda) {
-      var object, value, _i, _len;
-      if (lambda == null) {
-        lambda = this.identityFunction;
-      }
-      if (this.isString(lambda)) {
-        lambda = this.propertyFunction(lambda);
-      }
-      value = 0;
-      for (_i = 0, _len = array.length; _i < _len; _i++) {
-        object = array[_i];
-        value += lambda(object);
-      }
-      return value;
-    },
-    average: function(array, lambda) {
-      if (lambda == null) {
-        lambda = this.identityFunction;
-      }
-      return this.sum(array, lambda) / array.length;
-    },
-    median: function(array) {
-      var middle;
-      if (array.sort != null) {
-        array = this.clone(array);
-      } else {
-        array = this.typedToJS(array);
-      }
-      middle = (array.length - 1) / 2;
-      this.sort(array);
-      return (array[Math.floor(middle)] + array[Math.ceil(middle)]) / 2;
-    },
-    histogram: function(array, binSize, lambda) {
-      var histogram, integer, object, value, _i, _j, _len, _len1;
-      if (binSize == null) {
-        binSize = 1;
-      }
-      if (lambda == null) {
-        lambda = this.identityFunction;
-      }
-      if (this.isString(lambda)) {
-        lambda = this.propertyFunction(lambda);
-      }
-      histogram = [];
-      for (_i = 0, _len = array.length; _i < _len; _i++) {
-        object = array[_i];
-        integer = Math.floor(lambda(object) / binSize);
-        histogram[integer] || (histogram[integer] = 0);
-        histogram[integer] += 1;
-      }
-      for (integer = _j = 0, _len1 = histogram.length; _j < _len1; integer = ++_j) {
-        value = histogram[integer];
-        if (value == null) {
-          histogram[integer] = 0;
-        }
-      }
-      return histogram;
-    },
-    sort: function(array, lambda) {
-      if (lambda == null) {
-        lambda = null;
-      }
-      if (this.isString(lambda)) {
-        lambda = this.propertySortFunction(lambda);
-      }
-      return array._sort(lambda);
-    },
-    uniq: function(array) {
-      var hash, index, _i, _ref;
-      hash = {};
-      for (index = _i = 0, _ref = array.length; 0 <= _ref ? _i < _ref : _i > _ref; index = 0 <= _ref ? ++_i : --_i) {
-        if (hash[array[index]] === true) {
-          array.splice(index, 1);
-        }
-        hash[array[index]] = true;
-      }
-      return array;
-    },
-    flatten: function(array) {
-      return array.reduce(function(arrayA, arrayB) {
-        if (!u.isArray(arrayA)) {
-          arrayA = [arrayA];
-        }
-        return arrayA.concat(arrayB);
-      });
-    },
-    normalize: function(array, low, high) {
-      var max, min, newArray, number, scale, _i, _len;
-      if (low == null) {
-        low = 0;
-      }
-      if (high == null) {
-        high = 1;
-      }
-      min = this.min(array);
-      max = this.max(array);
-      scale = 1 / (max - min);
-      newArray = [];
-      for (_i = 0, _len = array.length; _i < _len; _i++) {
-        number = array[_i];
-        newArray.push(this.linearInterpolate(low, high, scale * (number - min)));
-      }
-      return newArray;
-    },
-    normalizeInt: function(array, low, high) {
-      var i, _i, _len, _ref, _results;
-      _ref = this.normalize(array, low, high);
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        i = _ref[_i];
-        _results.push(Math.round(i));
-      }
-      return _results;
-    },
-    normalize8: function(array) {
-      return new Uint8ClampedArray(this.normalize(array, -.5, 255.5));
-    },
-    radiansToward: function(point1, point2, patches) {
+    angle: function(point1, point2, patches) {
       if (patches.isTorus) {
-        return this.radiansTowardTorus(point1, point2, patches);
+        return this.angleTorus(point1, point2, patches);
       } else {
-        return this.radiansTowardEuclidian(point1, point2);
+        return this.angleEuclidian(point1, point2);
       }
     },
-    radiansTowardEuclidian: function(point1, point2) {
+    angleEuclidian: function(point1, point2) {
       return Math.atan2(point2.y - point1.y, point2.x - point1.x);
     },
-    radiansTowardTorus: function(point1, point2, patches) {
+    angleTorus: function(point1, point2, patches) {
       var closest;
-      closest = this.closestTorusPoint(point1, point2, patches.numX, patches.numY);
-      return this.radiansTowardEuclidian(point1, closest);
+      closest = this.closestTorusPoint(point1, point2, patches.width, patches.height);
+      return this.angleEuclidian(point1, closest);
     },
     inCone: function(heading, cone, radius, point1, point2, patches) {
       if (patches.isTorus) {
@@ -606,12 +311,12 @@
       if (radius < this.distanceEuclidian(point1, point2)) {
         return false;
       }
-      angle = this.radiansTowardEuclidian(point1, point2);
+      angle = this.angleEuclidian(point1, point2);
       return cone / 2 >= Math.abs(this.substractRadians(heading, angle));
     },
     inConeTorus: function(heading, cone, radius, point1, point2, patches) {
       var point, _i, _len, _ref;
-      _ref = this.torus4Points(point1, point2, patches.numX, patches.numY);
+      _ref = this.torus4Points(point1, point2, patches.width, patches.height);
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
         if (this.inConeEuclidian(heading, cone, radius, point1, point)) {
@@ -637,8 +342,8 @@
       var minX, minY, xDistance, yDistance;
       xDistance = Math.abs(point2.x - point1.x);
       yDistance = Math.abs(point2.y - point1.y);
-      minX = Math.min(xDistance, patches.numX - xDistance);
-      minY = Math.min(yDistance, patches.numY - yDistance);
+      minX = Math.min(xDistance, patches.width - xDistance);
+      minY = Math.min(yDistance, patches.height - yDistance);
       return Math.sqrt(minX * minX + minY * minY);
     },
     torus4Points: function(point1, point2, width, height) {
@@ -1016,51 +721,753 @@
     }
   };
 
+  ABM.util.array = {
+    from: function(array, arrayType) {
+      return ABM.Array.from(array, arrayType);
+    },
+    toString: function(array) {
+      var object;
+      return "[" + ((function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = array.length; _i < _len; _i++) {
+          object = array[_i];
+          _results.push(object.toString());
+        }
+        return _results;
+      })()).join(", ") + "]";
+    },
+    toFixed: function(array, precision) {
+      var newArray, number, _i, _len;
+      if (precision == null) {
+        precision = 2;
+      }
+      newArray = [];
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        number = array[_i];
+        newArray.push(number.toFixed(precision));
+      }
+      return newArray;
+    },
+    any: function(array) {
+      return !this.empty(array);
+    },
+    empty: function(array) {
+      return array.length === 0;
+    },
+    clone: function(array, begin, end) {
+      var method;
+      if (begin == null) {
+        begin = null;
+      }
+      if (end == null) {
+        end = null;
+      }
+      if (array.slice != null) {
+        method = "slice";
+      } else {
+        method = "subarray";
+      }
+      if (begin != null) {
+        return array[method](begin, end);
+      } else {
+        return array[method](0);
+      }
+    },
+    first: function(array) {
+      return array[0];
+    },
+    last: function(array) {
+      if (this.empty(array)) {
+        return void 0;
+      } else {
+        return array[array.length - 1];
+      }
+    },
+    sample: function(array, numberOrCondition, condition) {
+      var checked, newArray, number, object;
+      if (numberOrCondition == null) {
+        numberOrCondition = null;
+      }
+      if (condition == null) {
+        condition = null;
+      }
+      if (u.isFunction(numberOrCondition)) {
+        condition = numberOrCondition;
+      } else if (numberOrCondition != null) {
+        number = Math.floor(numberOrCondition);
+      }
+      if (number != null) {
+        newArray = new ABM.Array;
+        object = true;
+        while (newArray.length < number && (object != null)) {
+          object = this.sample(array, condition);
+          if (object && __indexOf.call(newArray, object) < 0) {
+            newArray.push(object);
+          }
+        }
+        return newArray;
+      } else if (condition != null) {
+        checked = new ABM.Array;
+        while (checked.length < array.length) {
+          object = this.sample(array);
+          if (object && __indexOf.call(checked, object) < 0) {
+            checked.push(object);
+            if (condition(object)) {
+              return object;
+            }
+          }
+        }
+      } else {
+        if (this.empty(array)) {
+          return null;
+        }
+        return array[u.randomInt(array.length)];
+      }
+    },
+    contains: function(array, object) {
+      return array.indexOf(object) >= 0;
+    },
+    remove: function(array, object) {
+      var index;
+      while (true) {
+        index = array.indexOf(object);
+        if (index === -1) {
+          break;
+        }
+        array.splice(index, 1);
+      }
+      return array;
+    },
+    removeItems: function(array, objects) {
+      var object, _i, _len;
+      for (_i = 0, _len = objects.length; _i < _len; _i++) {
+        object = objects[_i];
+        this.remove(array, object);
+      }
+      return array;
+    },
+    shuffle: function(array) {
+      return array.sort(function() {
+        return 0.5 - Math.random();
+      });
+    },
+    min: function(array, lambda, valueToo) {
+      var minObject, minValue, object, value, _i, _len;
+      if (lambda == null) {
+        lambda = u.identityFunction;
+      }
+      if (valueToo == null) {
+        valueToo = false;
+      }
+      if (this.empty(array)) {
+        u.error("min: empty array");
+      }
+      if (u.isString(lambda)) {
+        lambda = u.propertyFunction(lambda);
+      }
+      minValue = Infinity;
+      minObject = null;
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        object = array[_i];
+        value = lambda(object);
+        if (value < minValue) {
+          minValue = value;
+          minObject = object;
+        }
+      }
+      if (valueToo) {
+        return [minObject, minValue];
+      } else {
+        return minObject;
+      }
+    },
+    max: function(array, lambda, valueToo) {
+      var maxObject, maxValue, object, value, _i, _len;
+      if (lambda == null) {
+        lambda = u.identityFunction;
+      }
+      if (valueToo == null) {
+        valueToo = false;
+      }
+      if (this.empty(array)) {
+        u.error("max: empty array");
+      }
+      if (u.isString(lambda)) {
+        lambda = u.propertyFunction(lambda);
+      }
+      maxValue = -Infinity;
+      maxObject = null;
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        object = array[_i];
+        value = lambda(object);
+        if (value > maxValue) {
+          maxValue = value;
+          maxObject = object;
+        }
+      }
+      if (valueToo) {
+        return [maxObject, maxValue];
+      } else {
+        return maxObject;
+      }
+    },
+    sum: function(array, lambda) {
+      var object, value, _i, _len;
+      if (lambda == null) {
+        lambda = u.identityFunction;
+      }
+      if (u.isString(lambda)) {
+        lambda = u.propertyFunction(lambda);
+      }
+      value = 0;
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        object = array[_i];
+        value += lambda(object);
+      }
+      return value;
+    },
+    average: function(array, lambda) {
+      if (lambda == null) {
+        lambda = u.identityFunction;
+      }
+      return this.sum(array, lambda) / array.length;
+    },
+    median: function(array) {
+      var middle;
+      if (array.sort != null) {
+        array = this.clone(array);
+      } else {
+        array = u.typedToJS(array);
+      }
+      middle = (array.length - 1) / 2;
+      this.sort(array);
+      return (array[Math.floor(middle)] + array[Math.ceil(middle)]) / 2;
+    },
+    histogram: function(array, binSize, lambda) {
+      var histogram, integer, object, value, _i, _j, _len, _len1;
+      if (binSize == null) {
+        binSize = 1;
+      }
+      if (lambda == null) {
+        lambda = u.identityFunction;
+      }
+      if (u.isString(lambda)) {
+        lambda = u.propertyFunction(lambda);
+      }
+      histogram = [];
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        object = array[_i];
+        integer = Math.floor(lambda(object) / binSize);
+        histogram[integer] || (histogram[integer] = 0);
+        histogram[integer] += 1;
+      }
+      for (integer = _j = 0, _len1 = histogram.length; _j < _len1; integer = ++_j) {
+        value = histogram[integer];
+        if (value == null) {
+          histogram[integer] = 0;
+        }
+      }
+      return histogram;
+    },
+    sort: function(array, lambda) {
+      if (lambda == null) {
+        lambda = null;
+      }
+      if (u.isString(lambda)) {
+        lambda = u.propertySortFunction(lambda);
+      }
+      return array._sort(lambda);
+    },
+    uniq: function(array) {
+      var hash, i;
+      hash = {};
+      i = 0;
+      while (i < array.length) {
+        if (hash[array[i]] === true) {
+          array.splice(i, 1);
+          i -= 1;
+        } else {
+          hash[array[i]] = true;
+        }
+        i += 1;
+      }
+      return array;
+    },
+    flatten: function(array) {
+      return array.reduce(function(arrayA, arrayB) {
+        if (!u.isArray(arrayA)) {
+          arrayA = new ABM.Array(arrayA);
+        }
+        return arrayA.concat(arrayB);
+      });
+    },
+    concat: function(array, addArray) {
+      var element, newArray, _i, _len;
+      newArray = array.clone();
+      if (u.isArray(addArray)) {
+        for (_i = 0, _len = addArray.length; _i < _len; _i++) {
+          element = addArray[_i];
+          newArray.push(element);
+        }
+      } else {
+        newArray.push(addArray);
+      }
+      return newArray;
+    },
+    normalize: function(array, low, high) {
+      var max, min, newArray, number, scale, _i, _len;
+      if (low == null) {
+        low = 0;
+      }
+      if (high == null) {
+        high = 1;
+      }
+      min = this.min(array);
+      max = this.max(array);
+      scale = 1 / (max - min);
+      newArray = [];
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        number = array[_i];
+        newArray.push(u.linearInterpolate(low, high, scale * (number - min)));
+      }
+      return newArray;
+    },
+    normalizeInt: function(array, low, high) {
+      var i, _i, _len, _ref, _results;
+      _ref = this.normalize(array, low, high);
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        i = _ref[_i];
+        _results.push(Math.round(i));
+      }
+      return _results;
+    },
+    normalize8: function(array) {
+      return new Uint8ClampedArray(this.normalize(array, -.5, 255.5));
+    },
+    ask: function(array, functionString) {
+      var object, _i, _len;
+      if (u.isString(functionString)) {
+        eval("functionString=function(o){return " + functionString + ";}");
+      }
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        object = array[_i];
+        functionString(object);
+      }
+      return array;
+    },
+    "with": function(array, functionString) {
+      var object;
+      if (u.isString(functionString)) {
+        eval("f=function(o){return " + functionString + ";}");
+      }
+      return this.from((function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = array.length; _i < _len; _i++) {
+          object = array[_i];
+          if (functionString(object)) {
+            _results.push(object);
+          }
+        }
+        return _results;
+      })());
+    },
+    getProperty: function(array, property) {
+      var object, _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = array.length; _i < _len; _i++) {
+        object = array[_i];
+        _results.push(object[property]);
+      }
+      return _results;
+    },
+    getPropertyWith: function(array, property, value) {
+      var object;
+      return this.from((function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = array.length; _i < _len; _i++) {
+          object = array[_i];
+          if (object[property] === value) {
+            _results.push(object);
+          }
+        }
+        return _results;
+      })());
+    },
+    setProperty: function(array, property, value) {
+      var i, object, _i, _j, _len, _len1;
+      if (u.isArray(value)) {
+        for (i = _i = 0, _len = array.length; _i < _len; i = ++_i) {
+          object = array[i];
+          object[property] = value[i];
+        }
+      } else {
+        for (_j = 0, _len1 = array.length; _j < _len1; _j++) {
+          object = array[_j];
+          object[property] = value;
+        }
+      }
+      return array;
+    },
+    other: function(array, given) {
+      var object;
+      return this.from((function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = array.length; _i < _len; _i++) {
+          object = array[_i];
+          if (object !== given) {
+            _results.push(object);
+          }
+        }
+        return _results;
+      })());
+    }
+  };
+
+  ABM.util.array.extender = {
+    methods: function() {
+      var key, value, _ref, _results;
+      _ref = ABM.util.array;
+      _results = [];
+      for (key in _ref) {
+        value = _ref[key];
+        if (typeof value === 'function') {
+          _results.push(key);
+        }
+      }
+      return _results;
+    },
+    extendArray: function(className) {
+      var method, methods, _i, _len, _results;
+      methods = this.methods();
+      _results = [];
+      for (_i = 0, _len = methods.length; _i < _len; _i++) {
+        method = methods[_i];
+        _results.push(eval("" + className + ".prototype." + method + " = function() {\n  var options, _ref, _ret;\n  options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];\n  _ret = (_ref = u.array)." + method + ".apply(_ref, [this].concat(__slice.call(options)));\n  if (ABM.util.isArray(_ret)) {\n    return this.constructor.from(_ret);\n  } else {\n    return _ret;\n  }\n};"));
+      }
+      return _results;
+    }
+  };
+
+  (_base = Array.prototype).indexOf || (_base.indexOf = function(given) {
+    var i, object, _i, _len;
+    for (i = _i = 0, _len = this.length; _i < _len; i = ++_i) {
+      object = this[i];
+      if (object === given) {
+        return i;
+      }
+    }
+    return -1;
+  });
+
+  Array.prototype._sort = Array.prototype.sort;
+
+  ABM.Array = (function(_super) {
+    __extends(Array, _super);
+
+    Array.from = function(array, arrayType) {
+      var _ref;
+      if (arrayType == null) {
+        arrayType = ABM.Array;
+      }
+      array.__proto__ = (_ref = arrayType.prototype) != null ? _ref : arrayType.constructor.prototype;
+      return array;
+    };
+
+    function Array() {
+      var options;
+      options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this.constructor.from(options);
+    }
+
+    return Array;
+
+  })(Array);
+
+  ABM.util.array.extender.extendArray('ABM.Array');
+
+  ABM.util.shapes = (function() {
+    var ccirc, cimg, circ, csq, fillSlot, poly, spriteSheets;
+    poly = function(c, a) {
+      var i, p, _i, _len;
+      for (i = _i = 0, _len = a.length; _i < _len; i = ++_i) {
+        p = a[i];
+        if (i === 0) {
+          c.moveTo(p[0], p[1]);
+        } else {
+          c.lineTo(p[0], p[1]);
+        }
+      }
+      return null;
+    };
+    circ = function(c, x, y, s) {
+      return c.arc(x, y, s / 2, 0, 2 * Math.PI);
+    };
+    ccirc = function(c, x, y, s) {
+      return c.arc(x, y, s / 2, 0, 2 * Math.PI, true);
+    };
+    cimg = function(c, x, y, s, img) {
+      c.scale(1, -1);
+      c.drawImage(img, x - s / 2, y - s / 2, s, s);
+      return c.scale(1, -1);
+    };
+    csq = function(c, x, y, s) {
+      return c.fillRect(x - s / 2, y - s / 2, s, s);
+    };
+    fillSlot = function(slot, img) {
+      slot.context.save();
+      slot.context.scale(1, -1);
+      slot.context.drawImage(img, slot.x, -(slot.y + slot.bits), slot.bits, slot.bits);
+      return slot.context.restore();
+    };
+    spriteSheets = new ABM.Array;
+    return {
+      "default": {
+        rotate: true,
+        draw: function(c) {
+          return poly(c, [[.5, 0], [-.5, -.5], [-.25, 0], [-.5, .5]]);
+        }
+      },
+      triangle: {
+        rotate: true,
+        draw: function(c) {
+          return poly(c, [[.5, 0], [-.5, -.4], [-.5, .4]]);
+        }
+      },
+      arrow: {
+        rotate: true,
+        draw: function(c) {
+          return poly(c, [[.5, 0], [0, .5], [0, .2], [-.5, .2], [-.5, -.2], [0, -.2], [0, -.5]]);
+        }
+      },
+      bug: {
+        rotate: true,
+        draw: function(c) {
+          c.strokeStyle = c.fillStyle;
+          c.lineWidth = .05;
+          poly(c, [[.4, .225], [.2, 0], [.4, -.225]]);
+          c.stroke();
+          c.beginPath();
+          circ(c, .12, 0, .26);
+          circ(c, -.05, 0, .26);
+          return circ(c, -.27, 0, .4);
+        }
+      },
+      pyramid: {
+        rotate: false,
+        draw: function(c) {
+          return poly(c, [[0, .5], [-.433, -.25], [.433, -.25]]);
+        }
+      },
+      circle: {
+        shortcut: function(c, x, y, s) {
+          c.beginPath();
+          circ(c, x, y, s);
+          c.closePath();
+          return c.fill();
+        },
+        rotate: false,
+        draw: function(c) {
+          return circ(c, 0, 0, 1);
+        }
+      },
+      square: {
+        shortcut: function(c, x, y, s) {
+          return csq(c, x, y, s);
+        },
+        rotate: false,
+        draw: function(c) {
+          return csq(c, 0, 0, 1);
+        }
+      },
+      pentagon: {
+        rotate: false,
+        draw: function(c) {
+          return poly(c, [[0, .45], [-.45, .1], [-.3, -.45], [.3, -.45], [.45, .1]]);
+        }
+      },
+      ring: {
+        rotate: false,
+        draw: function(c) {
+          circ(c, 0, 0, 1);
+          c.closePath();
+          return ccirc(c, 0, 0, .6);
+        }
+      },
+      person: {
+        rotate: false,
+        draw: function(c) {
+          poly(c, [[.15, .2], [.3, 0], [.125, -.1], [.125, .05], [.1, -.15], [.25, -.5], [.05, -.5], [0, -.25], [-.05, -.5], [-.25, -.5], [-.1, -.15], [-.125, .05], [-.125, -.1], [-.3, 0], [-.15, .2]]);
+          c.closePath();
+          return circ(c, 0, .35, .30);
+        }
+      },
+      names: function() {
+        var array, name, val;
+        array = new ABM.Array;
+        for (name in this) {
+          if (!__hasProp.call(this, name)) continue;
+          val = this[name];
+          if ((val.rotate != null) && (val.draw != null)) {
+            array.push(name);
+          }
+        }
+        return array;
+      },
+      add: function(name, rotate, draw, shortcut) {
+        var shape;
+        if (u.isFunction(draw)) {
+          shape = {
+            rotate: rotate,
+            draw: draw
+          };
+        } else {
+          shape = {
+            rotate: rotate,
+            img: draw,
+            draw: function(c) {
+              return cimg(c, .5, .5, 1, this.img);
+            }
+          };
+        }
+        this[name] = shape;
+        if (shortcut != null) {
+          return shape.shortcut = shortcut;
+        } else if ((shape.img != null) && !shape.rotate) {
+          return shape.shortcut = function(c, x, y, s) {
+            return cimg(c, x, y, s, this.img);
+          };
+        }
+      },
+      poly: poly,
+      circ: circ,
+      ccirc: ccirc,
+      cimg: cimg,
+      csq: csq,
+      spriteSheets: spriteSheets,
+      draw: function(context, shape, x, y, size, rad, color) {
+        if (shape.shortcut != null) {
+          if (shape.img == null) {
+            context.fillStyle = u.colorString(color);
+          }
+          shape.shortcut(context, x, y, size);
+        } else {
+          context.save();
+          context.translate(x, y);
+          if (size !== 1) {
+            context.scale(size, size);
+          }
+          if (rad !== 0) {
+            context.rotate(rad);
+          }
+          if (shape.img != null) {
+            shape.draw(context);
+          } else {
+            context.fillStyle = u.colorString(color);
+            context.beginPath();
+            shape.draw(context);
+            context.closePath();
+            context.fill();
+          }
+          context.restore();
+        }
+        return shape;
+      },
+      drawSprite: function(context, s, x, y, size, rad) {
+        if (rad === 0) {
+          context.drawImage(s.context.canvas, s.x, s.y, s.bits, s.bits, x - size / 2, y - size / 2, size, size);
+        } else {
+          context.save();
+          context.translate(x, y);
+          context.rotate(rad);
+          context.drawImage(s.context.canvas, s.x, s.y, s.bits, s.bits, -size / 2, -size / 2, size, size);
+          context.restore();
+        }
+        return s;
+      },
+      shapeToSprite: function(name, color, size) {
+        var bits, context, foundSlot, img, index, shape, slot, x, y;
+        bits = Math.ceil(ABM.patches.toBits(size));
+        shape = this[name];
+        index = shape.img != null ? name : "" + name + "-" + (u.colorString(color));
+        context = spriteSheets[bits];
+        if (context == null) {
+          spriteSheets[bits] = context = u.createContext(bits * 10, bits);
+          context.nextX = 0;
+          context.nextY = 0;
+          context.index = {};
+        }
+        if ((foundSlot = context.index[index]) != null) {
+          return foundSlot;
+        }
+        if (bits * context.nextX === context.canvas.width) {
+          u.resizeContext(context, context.canvas.width, context.canvas.height + bits);
+          context.nextX = 0;
+          context.nextY++;
+        }
+        x = bits * context.nextX;
+        y = bits * context.nextY;
+        slot = {
+          context: context,
+          x: x,
+          y: y,
+          size: size,
+          bits: bits,
+          name: name,
+          color: color,
+          index: index
+        };
+        context.index[index] = slot;
+        if ((img = shape.img) != null) {
+          if (img.height !== 0) {
+            fillSlot(slot, img);
+          } else {
+            img.onload = function() {
+              return fillSlot(slot, img);
+            };
+          }
+        } else {
+          context.save();
+          context.scale(bits, bits);
+          context.translate(context.nextX + .5, context.nextY + .5);
+          context.fillStyle = u.colorString(color);
+          context.beginPath();
+          shape.draw(context);
+          context.closePath();
+          context.fill();
+          context.restore();
+        }
+        context.nextX++;
+        return slot;
+      }
+    };
+  })();
+
   ABM.Set = (function(_super) {
     __extends(Set, _super);
 
-    Set.asSet = function(a, setType) {
+    function Set() {
+      return Set.__super__.constructor.apply(this, arguments);
+    }
+
+    Set.from = function(array, setType) {
       var _ref;
       if (setType == null) {
         setType = ABM.Set;
       }
-      a.__proto__ = (_ref = setType.prototype) != null ? _ref : setType.constructor.prototype;
-      return a;
+      array.__proto__ = (_ref = setType.prototype) != null ? _ref : setType.constructor.prototype;
+      return array;
     };
 
-    function Set(agentClass, name, mainSet) {
-      Set.__super__.constructor.call(this, 0);
-      this.agentClass = agentClass;
-      this.name = name;
-      this.mainSet = mainSet;
-      if (this.mainSet == null) {
-        this.breeds = [];
+    Set.prototype.from = function(array, setType) {
+      if (setType == null) {
+        setType = this;
       }
-      this.agentClass.prototype.breed = this;
-      this.ownVariables = [];
-      if (this.mainSet == null) {
-        this.ID = 0;
-      }
-    }
-
-    Set.prototype.create = function() {};
-
-    Set.prototype.add = function(object) {
-      if (this.mainSet != null) {
-        this.mainSet.add(object);
-      } else {
-        object.id = this.ID++;
-      }
-      this.push(object);
-      return object;
-    };
-
-    Set.prototype.remove = function(object) {
-      if (this.mainSet != null) {
-        u.remove(this.mainSet, object);
-      }
-      u.remove(this, object);
-      return this;
+      return ABM.Set.from(array, setType);
     };
 
     Set.prototype.setDefault = function(name, value) {
@@ -1068,36 +1475,10 @@
       return this;
     };
 
-    Set.prototype.own = function(vars) {
-      var name, _i, _len, _ref;
-      _ref = vars.split(" ");
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        name = _ref[_i];
-        this.setDefault(name, null);
-        this.ownVariables.push(name);
-      }
-      return this;
-    };
-
-    Set.prototype.setBreed = function(a) {
-      var k, proto, v;
-      u.remove(a.breed, a);
-      this.push(a);
-      proto = a.__proto__ = this.agentClass.prototype;
-      for (k in a) {
-        if (!__hasProp.call(a, k)) continue;
-        v = a[k];
-        if (proto[k] != null) {
-          delete a[k];
-        }
-      }
-      return a;
-    };
-
     Set.prototype.exclude = function(breeds) {
       var o;
       breeds = breeds.split(" ");
-      return this.asSet((function() {
+      return this.from((function() {
         var _i, _len, _ref, _results;
         _results = [];
         for (_i = 0, _len = this.length; _i < _len; _i++) {
@@ -1110,7 +1491,144 @@
       }).call(this));
     };
 
-    Set.prototype.floodFill = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
+    Set.prototype.draw = function(context) {
+      var o, _i, _len;
+      u.clearContext(context);
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        o = this[_i];
+        if (!o.hidden) {
+          o.draw(context);
+        }
+      }
+      return null;
+    };
+
+    Set.prototype.show = function() {
+      var o, _i, _len;
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        o = this[_i];
+        o.hidden = false;
+      }
+      return this.draw(ABM.contexts[this.name]);
+    };
+
+    Set.prototype.hide = function() {
+      var o, _i, _len;
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        o = this[_i];
+        o.hidden = true;
+      }
+      return this.draw(ABM.contexts[this.name]);
+    };
+
+    Set.prototype.inRadius = function(point, options) {
+      var entity, inner, _i, _len;
+      inner = new ABM.Set;
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        entity = this[_i];
+        if (entity.distance(point) <= options.radius) {
+          inner.push(entity);
+        }
+      }
+      return inner;
+    };
+
+    Set.prototype.inCone = function(point, options) {
+      var entity, inner, _i, _len;
+      inner = new ABM.Set;
+      for (_i = 0, _len = this.length; _i < _len; _i++) {
+        entity = this[_i];
+        if (u.inCone(options.heading, options.cone, options.radius, point, entity.position, ABM.patches)) {
+          inner.push(entity);
+        }
+      }
+      return inner;
+    };
+
+    return Set;
+
+  })(ABM.Array);
+
+  ABM.BreedSet = (function(_super) {
+    __extends(BreedSet, _super);
+
+    function BreedSet(agentClass, name, mainSet) {
+      BreedSet.__super__.constructor.call(this, 0);
+      this.agentClass = agentClass;
+      this.name = name;
+      this.mainSet = mainSet;
+      if (this.mainSet == null) {
+        this.breeds = [];
+        this.ID = 0;
+      }
+      this.agentClass.prototype.breed = this;
+    }
+
+    BreedSet.prototype.create = function() {};
+
+    BreedSet.prototype.originalPush = BreedSet.prototype.push;
+
+    BreedSet.prototype.push = function() {
+      var item, object, _i, _len;
+      object = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      if (object.length > 1) {
+        for (_i = 0, _len = object.length; _i < _len; _i++) {
+          item = object[_i];
+          this.push(item);
+        }
+      } else {
+        object = object[0];
+        this.originalPush(object);
+        if (this.mainSet != null) {
+          this.mainSet.push(object);
+        } else {
+          if (object.id != null) {
+            if ((object.breed != null) && object.breed.name === !this.name) {
+              object.id = this.ID++;
+            }
+          } else {
+            object.id = this.ID++;
+          }
+        }
+      }
+      return object;
+    };
+
+    BreedSet.prototype.add = function(object) {
+      return this.push(object);
+    };
+
+    BreedSet.prototype.remove = function(object) {
+      if (this.mainSet != null) {
+        this.mainSet.remove(object);
+      }
+      u.array.remove(this, object);
+      return this;
+    };
+
+    BreedSet.prototype.pop = function() {
+      var object;
+      object = this.last();
+      this.remove(object);
+      return object;
+    };
+
+    BreedSet.prototype.setBreed = function(agent) {
+      var key, proto, value;
+      agent.breed.remove(agent);
+      this.push(agent);
+      proto = agent.__proto__ = this.agentClass.prototype;
+      for (key in agent) {
+        if (!__hasProp.call(agent, key)) continue;
+        value = agent[key];
+        if (proto[key] != null) {
+          delete agent[key];
+        }
+      }
+      return agent;
+    };
+
+    BreedSet.prototype.floodFill = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
       var floodFunc, _results;
       if (asetLast == null) {
         asetLast = [];
@@ -1123,7 +1641,7 @@
       return _results;
     };
 
-    Set.prototype.floodFillOnce = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
+    BreedSet.prototype.floodFillOnce = function(aset, fCandidate, fJoin, fCallback, fNeighbors, asetLast) {
       var asetNext, n, p, stopEarly, _i, _j, _k, _len, _len1, _len2, _ref;
       if (asetLast == null) {
         asetLast = [];
@@ -1157,237 +1675,20 @@
       }
     };
 
-    Set.prototype.uniq = function() {
-      return u.uniq(this);
+    BreedSet.prototype.asOrderedSet = function(a) {
+      return this.from(a).sort("id");
     };
 
-    Set.prototype.asSet = function(a, setType) {
-      if (setType == null) {
-        setType = this;
-      }
-      return ABM.Set.asSet(a, setType);
-    };
+    return BreedSet;
 
-    Set.prototype.asOrderedSet = function(a) {
-      return this.asSet(a).sort("id");
-    };
-
-    Set.prototype.toString = function() {
-      var a;
-      return "[" + ((function() {
-        var _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = this.length; _i < _len; _i++) {
-          a = this[_i];
-          _results.push(a.toString());
-        }
-        return _results;
-      }).call(this)).join(", ") + "]";
-    };
-
-    Set.prototype.getProp = function(prop) {
-      var o, _i, _len, _results;
-      _results = [];
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        o = this[_i];
-        _results.push(o[prop]);
-      }
-      return _results;
-    };
-
-    Set.prototype.getPropWith = function(prop, value) {
-      var o;
-      return this.asSet((function() {
-        var _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = this.length; _i < _len; _i++) {
-          o = this[_i];
-          if (o[prop] === value) {
-            _results.push(o);
-          }
-        }
-        return _results;
-      }).call(this));
-    };
-
-    Set.prototype.setProp = function(prop, value) {
-      var i, o, _i, _j, _len, _len1;
-      if (u.isArray(value)) {
-        for (i = _i = 0, _len = this.length; _i < _len; i = ++_i) {
-          o = this[i];
-          o[prop] = value[i];
-        }
-        return this;
-      } else {
-        for (_j = 0, _len1 = this.length; _j < _len1; _j++) {
-          o = this[_j];
-          o[prop] = value;
-        }
-        return this;
-      }
-    };
-
-    Set.prototype.shuffle = function() {
-      return u.shuffle(this);
-    };
-
-    Set.prototype.sort = function() {
-      var options;
-      options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      return u.sort.apply(u, [this].concat(__slice.call(options)));
-    };
-
-    Set.prototype.clone = function() {
-      return this.asSet(u.clone(this));
-    };
-
-    Set.prototype.last = function() {
-      return u.last(this);
-    };
-
-    Set.prototype.any = function() {
-      return u.any(this);
-    };
-
-    Set.prototype.other = function(a) {
-      var o;
-      return this.asSet((function() {
-        var _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = this.length; _i < _len; _i++) {
-          o = this[_i];
-          if (o !== a) {
-            _results.push(o);
-          }
-        }
-        return _results;
-      }).call(this));
-    };
-
-    Set.prototype.sample = function() {
-      var options, random;
-      options = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      random = u.sample.apply(u, [this].concat(__slice.call(options)));
-      if (random && random.isArray) {
-        return this.asSet(random);
-      } else {
-        return random;
-      }
-    };
-
-    Set.prototype.min = function(f, valueToo) {
-      if (valueToo == null) {
-        valueToo = false;
-      }
-      return u.min(this, f, valueToo);
-    };
-
-    Set.prototype.max = function(f, valueToo) {
-      if (valueToo == null) {
-        valueToo = false;
-      }
-      return u.max(this, f, valueToo);
-    };
-
-    Set.prototype.draw = function(context) {
-      var o, _i, _len;
-      u.clearContext(context);
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        o = this[_i];
-        if (!o.hidden) {
-          o.draw(context);
-        }
-      }
-      return null;
-    };
-
-    Set.prototype.show = function() {
-      var o, _i, _len;
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        o = this[_i];
-        o.hidden = false;
-      }
-      return this.draw(ABM.contexts[this.name]);
-    };
-
-    Set.prototype.hide = function() {
-      var o, _i, _len;
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        o = this[_i];
-        o.hidden = true;
-      }
-      return this.draw(ABM.contexts[this.name]);
-    };
-
-    Set.prototype.ask = function(f) {
-      var o, _i, _len;
-      if (u.isString(f)) {
-        eval("f=function(o){return " + f + ";}");
-      }
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        o = this[_i];
-        f(o);
-      }
-      return this;
-    };
-
-    Set.prototype["with"] = function(f) {
-      var o;
-      if (u.isString(f)) {
-        eval("f=function(o){return " + f + ";}");
-      }
-      return this.asSet((function() {
-        var _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = this.length; _i < _len; _i++) {
-          o = this[_i];
-          if (f(o)) {
-            _results.push(o);
-          }
-        }
-        return _results;
-      }).call(this));
-    };
-
-    Set.prototype.inRadius = function(entity1, options) {
-      var entity2, inner, _i, _len;
-      inner = [];
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        entity2 = this[_i];
-        if (entity1.distance(entity2) <= options.radius) {
-          inner.push(entity2);
-        }
-      }
-      return this.asSet(inner);
-    };
-
-    Set.prototype.inCone = function(entity1, options) {
-      var entity2, inner, _i, _len;
-      if (options.heading == null) {
-        options.heading = entity1.heading;
-      }
-      inner = [];
-      for (_i = 0, _len = this.length; _i < _len; _i++) {
-        entity2 = this[_i];
-        if (u.inCone(options.heading, options.cone, options.radius, entity1, entity2, ABM.patches)) {
-          inner.push(entity2);
-        }
-      }
-      return this.asSet(inner);
-    };
-
-    return Set;
-
-  })(Array);
+  })(ABM.Set);
 
   ABM.Agent = (function() {
     Agent.prototype.id = null;
 
     Agent.prototype.breed = null;
 
-    Agent.prototype.x = 0;
-
-    Agent.prototype.y = 0;
+    Agent.prototype.position = null;
 
     Agent.prototype.patch = null;
 
@@ -1413,45 +1714,37 @@
 
     Agent.prototype.sprite = null;
 
-    Agent.prototype.cacheLinks = false;
-
     Agent.prototype.links = null;
 
     function Agent() {
-      this.x = this.y = 0;
+      this.position = {
+        x: 0,
+        y: 0
+      };
       if (this.color == null) {
         this.color = u.randomColor();
       }
       if (this.heading == null) {
         this.heading = u.randomFloat(Math.PI * 2);
       }
-      if (this.cacheLinks) {
-        this.links = [];
-      }
-      this.setXY(this.x, this.y);
+      this.links = new ABM.Array;
+      this.moveTo(this.position);
     }
 
-    Agent.prototype.fractionOfColor = function(color, fraction) {
-      if (!this.hasOwnProperty("color")) {
-        this.color = u.clone(this.color);
-      }
-      return u.fractionOfColor(color, fraction, this.color);
-    };
-
     Agent.prototype.toString = function() {
-      return "{id:" + this.id + " xy:" + (u.aToFixed([this.x, this.y])) + " c:" + this.color + " h: " + (this.heading.toFixed(2)) + "}";
+      return ("{id: " + this.id + ", position: {x: " + (this.position.x.toFixed(2)) + ",") + (" y: " + (this.position.y.toFixed(2)) + "}, c: " + this.color + ", h: " + (this.heading.toFixed(2)) + "}");
     };
 
-    Agent.prototype.setXY = function(x, y) {
-      var drawing, oldPatch, x0, y0, _ref, _ref1;
+    Agent.prototype.moveTo = function(point) {
+      var drawing, oldPatch, x0, y0, _ref;
       if (this.penDown) {
-        _ref = [this.x, this.y], x0 = _ref[0], y0 = _ref[1];
+        _ref = [this.position.x, this.position.y], x0 = _ref[0], y0 = _ref[1];
       }
-      _ref1 = ABM.patches.coord(x, y), this.x = _ref1[0], this.y = _ref1[1];
+      this.position = ABM.patches.coordinate(point);
       oldPatch = this.patch;
-      this.patch = ABM.patches.patch(this.x, this.y);
-      if (oldPatch) {
-        u.remove(oldPatch.agents, this);
+      this.patch = ABM.patches.patch(this.position);
+      if (oldPatch && oldPatch !== this.patch) {
+        oldPatch.agents.remove(this);
       }
       this.patch.agents.push(this);
       if (this.penDown) {
@@ -1460,81 +1753,35 @@
         drawing.lineWidth = ABM.patches.fromBits(this.penSize);
         drawing.beginPath();
         drawing.moveTo(x0, y0);
-        drawing.lineTo(x, y);
+        drawing.lineTo(this.position.x, this.position.y);
         return drawing.stroke();
       }
     };
 
-    Agent.prototype.losePosition = function() {
-      u.remove(this.patch.agents, this);
-      return this.patch = null;
+    Agent.prototype.moveOff = function() {
+      if (this.patch) {
+        this.patch.agents.remove(this);
+      }
+      return this.patch = this.position = null;
     };
 
-    Agent.prototype.moveTo = function(patch) {
-      return this.setXY(patch.x, patch.y);
-    };
-
-    Agent.prototype.forward = function(d) {
-      return this.setXY(this.x + d * Math.cos(this.heading), this.y + d * Math.sin(this.heading));
+    Agent.prototype.forward = function(distance) {
+      return this.moveTo({
+        x: this.position.x + distance * Math.cos(this.heading),
+        y: this.position.y + distance * Math.sin(this.heading)
+      });
     };
 
     Agent.prototype.rotate = function(radians) {
       return this.heading = u.wrap(this.heading + radians, 0, Math.PI * 2);
     };
 
-    Agent.prototype.draw = function(context) {
-      var radians, shape, x, y, _ref;
-      if (this.patch === null) {
-        return;
-      }
-      shape = ABM.shapes[this.shape];
-      radians = shape.rotate ? this.heading : 0;
-      if ((this.sprite != null) || this.breed.useSprites) {
-        if (this.sprite == null) {
-          this.setSprite();
-        }
-        ABM.shapes.drawSprite(context, this.sprite, this.x, this.y, this.size, radians);
-      } else {
-        ABM.shapes.draw(context, shape, this.x, this.y, this.size, radians, this.color);
-      }
-      if (this.label != null) {
-        _ref = ABM.patches.patchXYtoPixelXY(this.x, this.y), x = _ref[0], y = _ref[1];
-        return u.contextDrawText(context, this.label, x + this.labelOffset[0], y + this.labelOffset[1], this.labelColor);
-      }
-    };
-
-    Agent.prototype.setSprite = function(sprite) {
-      if (sprite != null) {
-        this.sprite = sprite;
-        this.color = sprite.color;
-        this.shape = sprite.shape;
-        return this.size = sprite.size;
-      } else {
-        if (this.color == null) {
-          this.color = u.randomColor;
-        }
-        return this.sprite = ABM.shapes.shapeToSprite(this.shape, this.color, this.size);
-      }
-    };
-
-    Agent.prototype.stamp = function() {
-      return this.draw(ABM.drawing);
-    };
-
-    Agent.prototype.closestTorusPoint = function(point) {
-      return u.closestTorusPoint(this, point, ABM.patches.numX, ABM.patches.numY);
-    };
-
-    Agent.prototype.angleTowards = function(point) {
-      return u.radiansToward(this, point, ABM.patches);
-    };
-
     Agent.prototype.face = function(point) {
-      return this.heading = this.angleTowards(point);
+      return this.heading = u.angle(this.position, point, ABM.patches);
     };
 
     Agent.prototype.distance = function(point) {
-      return u.distance(this, point, ABM.patches);
+      return u.distance(this.position, point, ABM.patches);
     };
 
     Agent.prototype.neighbors = function(options) {
@@ -1545,12 +1792,15 @@
       if (options.radius) {
         square = this.neighbors(options.radius);
         if (options.cone) {
-          neighbors = square.inCone(this, options);
+          if (options.heading == null) {
+            options.heading = this.heading;
+          }
+          neighbors = square.inCone(this.position, options);
         } else {
-          neighbors = square.inRadius(this, options);
+          neighbors = square.inRadius(this.position, options);
         }
       } else {
-        neighbors = this.breed.asSet([]);
+        neighbors = this.breed.from([]);
         if (this.patch) {
           _ref = this.patch.neighbors(options);
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -1569,22 +1819,20 @@
     };
 
     Agent.prototype.die = function() {
-      var l, _i, _len, _ref;
+      var link, _i, _len, _ref;
       this.breed.remove(this);
-      _ref = this.myLinks();
+      _ref = this.links;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        l = _ref[_i];
-        l.die();
+        link = _ref[_i];
+        link.die();
       }
-      if (this.patch.agents != null) {
-        u.remove(this.patch.agents, this);
-      }
+      this.moveOff();
       return null;
     };
 
-    Agent.prototype.hatch = function(num, breed, init) {
-      if (num == null) {
-        num = 1;
+    Agent.prototype.hatch = function(number, breed, init) {
+      if (number == null) {
+        number = 1;
       }
       if (breed == null) {
         breed = ABM.agents;
@@ -1592,108 +1840,127 @@
       if (init == null) {
         init = function() {};
       }
-      return breed.create(num, (function(_this) {
-        return function(a) {
-          var k, v;
-          a.setXY(_this.x, _this.y);
-          for (k in _this) {
-            if (!__hasProp.call(_this, k)) continue;
-            v = _this[k];
-            if (k !== "id") {
-              a[k] = v;
+      return breed.create(number, (function(_this) {
+        return function(agent) {
+          var key, value;
+          agent.moveTo(_this.position);
+          for (key in _this) {
+            if (!__hasProp.call(_this, key)) continue;
+            value = _this[key];
+            if (key !== "id") {
+              agent[key] = value;
             }
           }
-          init(a);
-          return a;
+          init(agent);
+          return agent;
         };
       })(this));
     };
 
-    Agent.prototype.otherEnd = function(l) {
-      if (l.end1 === this) {
-        return l.end2;
+    Agent.prototype.otherEnd = function(link) {
+      if (link.from === this) {
+        return link.to;
       } else {
-        return l.end1;
+        return link.from;
       }
     };
 
-    Agent.prototype.myLinks = function() {
-      var l, _ref;
-      return (_ref = this.links) != null ? _ref : (function() {
-        var _i, _len, _ref1, _results;
-        _ref1 = ABM.links;
-        _results = [];
-        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-          l = _ref1[_i];
-          if ((l.end1 === this) || (l.end2 === this)) {
-            _results.push(l);
-          }
+    Agent.prototype.outLinks = function() {
+      var link, _i, _len, _ref, _results;
+      _ref = this.links;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        link = _ref[_i];
+        if (link.from === this) {
+          _results.push(link);
         }
-        return _results;
-      }).call(this);
+      }
+      return _results;
+    };
+
+    Agent.prototype.inLinks = function() {
+      var link, _i, _len, _ref, _results;
+      _ref = this.links;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        link = _ref[_i];
+        if (link.to === this) {
+          _results.push(link);
+        }
+      }
+      return _results;
     };
 
     Agent.prototype.linkNeighbors = function() {
-      var l, _i, _len, _ref, _results;
-      _ref = this.myLinks();
-      _results = [];
+      var array, link, _i, _len, _ref;
+      array = new ABM.Array;
+      _ref = this.links;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        l = _ref[_i];
-        _results.push(this.otherEnd(l));
+        link = _ref[_i];
+        array.push(this.otherEnd(link));
       }
-      return _results;
-    };
-
-    Agent.prototype.myInLinks = function() {
-      var l, _i, _len, _ref, _results;
-      _ref = this.myLinks();
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        l = _ref[_i];
-        if (l.end2 === this) {
-          _results.push(l);
-        }
-      }
-      return _results;
+      return array.uniq();
     };
 
     Agent.prototype.inLinkNeighbors = function() {
-      var l, _i, _len, _ref, _results;
-      _ref = this.myLinks();
-      _results = [];
+      var array, link, _i, _len, _ref;
+      array = new ABM.Array;
+      _ref = this.inLinks();
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        l = _ref[_i];
-        if (l.end2 === this) {
-          _results.push(l.end1);
-        }
+        link = _ref[_i];
+        array.push(link.from);
       }
-      return _results;
-    };
-
-    Agent.prototype.myOutLinks = function() {
-      var l, _i, _len, _ref, _results;
-      _ref = this.myLinks();
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        l = _ref[_i];
-        if (l.end1 === this) {
-          _results.push(l);
-        }
-      }
-      return _results;
+      return array.uniq();
     };
 
     Agent.prototype.outLinkNeighbors = function() {
-      var l, _i, _len, _ref, _results;
-      _ref = this.myLinks();
-      _results = [];
+      var array, link, _i, _len, _ref;
+      array = new ABM.Array;
+      _ref = this.outLinks();
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        l = _ref[_i];
-        if (l.end1 === this) {
-          _results.push(l.end2);
-        }
+        link = _ref[_i];
+        array.push(link.to);
       }
-      return _results;
+      return array.uniq();
+    };
+
+    Agent.prototype.draw = function(context) {
+      var radians, shape, x, y, _ref;
+      if (this.patch === null) {
+        return;
+      }
+      shape = u.shapes[this.shape];
+      radians = shape.rotate ? this.heading : 0;
+      if ((this.sprite != null) || this.breed.useSprites) {
+        if (this.sprite == null) {
+          this.setSprite();
+        }
+        u.shapes.drawSprite(context, this.sprite, this.position.x, this.position.y, this.size, radians);
+      } else {
+        u.shapes.draw(context, shape, this.position.x, this.position.y, this.size, radians, this.color);
+      }
+      if (this.label != null) {
+        _ref = ABM.patches.patchXYtoPixelXY(this.x, this.y), x = _ref[0], y = _ref[1];
+        return u.contextDrawText(context, this.label, x + this.labelOffset[0], y + this.labelOffset[1], this.labelColor);
+      }
+    };
+
+    Agent.prototype.setSprite = function(sprite) {
+      if (sprite != null) {
+        this.sprite = sprite;
+        this.color = sprite.color;
+        this.shape = sprite.shape;
+        return this.size = sprite.size;
+      } else {
+        if (this.color == null) {
+          this.color = u.randomColor;
+        }
+        return this.sprite = u.shapes.shapeToSprite(this.shape, this.color, this.size);
+      }
+    };
+
+    Agent.prototype.stamp = function() {
+      return this.draw(ABM.drawing);
     };
 
     return Agent;
@@ -1708,38 +1975,31 @@
       this.useSprites = false;
     }
 
-    Agents.prototype.cacheLinks = function() {
-      return this.agentClass.prototype.cacheLinks = true;
-    };
-
     Agents.prototype.setUseSprites = function(useSprites) {
       this.useSprites = useSprites != null ? useSprites : true;
     };
 
-    Agents.prototype["in"] = function(array) {
-      var o;
-      return this.asSet((function() {
-        var _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = array.length; _i < _len; _i++) {
-          o = array[_i];
-          if (o.breed === this) {
-            _results.push(o);
-          }
+    Agents.prototype["in"] = function(agents) {
+      var agent, array, _i, _len;
+      array = [];
+      for (_i = 0, _len = agents.length; _i < _len; _i++) {
+        agent = agents[_i];
+        if (agent.breed === this) {
+          array.push(agent);
         }
-        return _results;
-      }).call(this));
+      }
+      return this.from(array);
     };
 
-    Agents.prototype.create = function(num, init) {
+    Agents.prototype.create = function(num, initialize) {
       var i, _i, _results;
-      if (init == null) {
-        init = function() {};
+      if (initialize == null) {
+        initialize = function() {};
       }
       _results = [];
       for (i = _i = 1; _i <= num; i = _i += 1) {
         _results.push((function(o) {
-          init(o);
+          initialize(o);
           return o;
         })(this.add(new this.agentClass)));
       }
@@ -1756,16 +2016,33 @@
     Agents.prototype.neighboring = function(agent, rangeOptions) {
       var array;
       array = agent.neighbors(rangeOptions);
-      if (this.mainSet != null) {
-        return this["in"](array);
-      } else {
-        return this.asSet(array);
+      return this["in"](array);
+    };
+
+    Agents.prototype.formCircle = function(radius, startAngle, direction) {
+      var agent, dTheta, i, _i, _len;
+      if (startAngle == null) {
+        startAngle = Math.PI / 2;
       }
+      if (direction == null) {
+        direction = -1;
+      }
+      dTheta = 2 * Math.PI / this.length;
+      for (i = _i = 0, _len = this.length; _i < _len; i = ++_i) {
+        agent = this[i];
+        agent.moveTo({
+          x: 0,
+          y: 0
+        });
+        agent.heading = startAngle + direction * dTheta * i;
+        agent.forward(radius);
+      }
+      return null;
     };
 
     return Agents;
 
-  })(ABM.Set);
+  })(ABM.BreedSet);
 
   ABM.Animator = (function() {
     function Animator(model, rate, multiStep) {
@@ -1906,9 +2183,9 @@
 
     Link.prototype.breed = null;
 
-    Link.prototype.end1 = null;
+    Link.prototype.from = null;
 
-    Link.prototype.end2 = null;
+    Link.prototype.to = null;
 
     Link.prototype.color = [130, 130, 130];
 
@@ -1922,40 +2199,38 @@
 
     Link.prototype.labelOffset = [0, 0];
 
-    function Link(end1, end2) {
-      this.end1 = end1;
-      this.end2 = end2;
-      if (this.end1.links != null) {
-        this.end1.links.push(this);
-        this.end2.links.push(this);
-      }
+    function Link(from, to) {
+      this.from = from;
+      this.to = to;
+      this.from.links.push(this);
+      this.to.links.push(this);
     }
 
     Link.prototype.draw = function(context) {
-      var pt, x, x0, y, y0, _ref;
+      var point, x, x0, y, y0, _ref;
       context.save();
       context.strokeStyle = u.colorString(this.color);
       context.lineWidth = ABM.patches.fromBits(this.thickness);
       context.beginPath();
       if (!ABM.patches.isTorus) {
-        context.moveTo(this.end1.x, this.end1.y);
-        context.lineTo(this.end2.x, this.end2.y);
+        context.moveTo(this.from.position.x, this.from.position.y);
+        context.lineTo(this.to.position.x, this.to.position.y);
       } else {
-        pt = this.end1.closestTorusPoint(this.end2);
-        context.moveTo(this.end1.x, this.end1.y);
-        context.lineTo.apply(context, pt);
-        if (pt[0] !== this.end2.x || pt[1] !== this.end2.y) {
-          pt = this.end2.closestTorusPoint(this.end1);
-          context.moveTo(this.end2.x, this.end2.y);
-          context.lineTo.apply(context, pt);
+        point = u.closestTorusPoint(this.from.position, this.to.position, ABM.patches.numX, ABM.patches.numY);
+        context.moveTo(this.from.position.x, this.from.position.y);
+        context.lineTo(point.x, point.y);
+        if (point.x !== this.to.position.x || point.y !== this.to.position.y) {
+          point = u.closestTorusPoint(this.to.position, this.from.position, ABM.patches.numX, ABM.patches.numY);
+          context.moveTo(this.to.position.x, this.to.position.y);
+          context.lineTo(point.x, point.y);
         }
       }
       context.closePath();
       context.stroke();
       context.restore();
       if (this.label != null) {
-        x0 = u.linearInterpolate(this.end1.x, this.end2.x, .5);
-        y0 = u.linearInterpolate(this.end1.y, this.end2.y, .5);
+        x0 = u.linearInterpolate(this.from.position.x, this.to.position.x, .5);
+        y0 = u.linearInterpolate(this.from.position.y, this.to.position.y, .5);
         _ref = ABM.patches.patchXYtoPixelXY(x0, y0), x = _ref[0], y = _ref[1];
         return u.contextDrawText(context, this.label, x + this.labelOffset[0], y + this.labelOffset[1], this.labelColor);
       }
@@ -1963,28 +2238,24 @@
 
     Link.prototype.die = function() {
       this.breed.remove(this);
-      if (this.end1.links != null) {
-        u.remove(this.end1.links, this);
-      }
-      if (this.end2.links != null) {
-        u.remove(this.end2.links, this);
-      }
+      this.from.links.remove(this);
+      this.to.links.remove(this);
       return null;
     };
 
     Link.prototype.bothEnds = function() {
-      return [this.end1, this.end2];
+      return new ABM.Array(this.from, this.to);
     };
 
     Link.prototype.length = function() {
-      return this.end1.distance(this.end2);
+      return this.from.distance(this.to.position);
     };
 
     Link.prototype.otherEnd = function(a) {
-      if (this.end1 === a) {
-        return this.end2;
+      if (this.from === a) {
+        return this.to;
       } else {
-        return this.end1;
+        return this.from;
       }
     };
 
@@ -2025,45 +2296,27 @@
       return null;
     };
 
-    Links.prototype.allEnds = function() {
-      var l, n, _i, _len;
-      n = this.asSet([]);
+    Links.prototype.nodesWithDups = function() {
+      var link, set, _i, _len;
+      set = new ABM.Set;
       for (_i = 0, _len = this.length; _i < _len; _i++) {
-        l = this[_i];
-        n.push(l.end1, l.end2);
+        link = this[_i];
+        set.push(link.from, link.to);
       }
-      return n;
+      return set;
     };
 
     Links.prototype.nodes = function() {
-      return this.allEnds().uniq();
-    };
-
-    Links.prototype.layoutCircle = function(list, radius, startAngle, direction) {
-      var a, dTheta, i, _i, _len;
-      if (startAngle == null) {
-        startAngle = Math.PI / 2;
-      }
-      if (direction == null) {
-        direction = -1;
-      }
-      dTheta = 2 * Math.PI / list.length;
-      for (i = _i = 0, _len = list.length; _i < _len; i = ++_i) {
-        a = list[i];
-        a.setXY(0, 0);
-        a.heading = startAngle + direction * dTheta * i;
-        a.forward(radius);
-      }
-      return null;
+      return this.nodesWithDups().uniq();
     };
 
     return Links;
 
-  })(ABM.Set);
+  })(ABM.BreedSet);
 
   ABM.models = {};
 
-  ABM.Model = (function() {
+  ABM.model = ABM.Model = (function() {
     Model.prototype.contextsInit = {
       patches: {
         z: 10,
@@ -2087,49 +2340,19 @@
       }
     };
 
-    function Model(divOrOptions, size, minX, maxX, minY, maxY, isTorus, hasNeighbors, isHeadless) {
-      var context, div, k, v, _ref;
-      if (size == null) {
-        size = 13;
-      }
-      if (minX == null) {
-        minX = -16;
-      }
-      if (maxX == null) {
-        maxX = 16;
-      }
-      if (minY == null) {
-        minY = -16;
-      }
-      if (maxY == null) {
-        maxY = 16;
-      }
-      if (isTorus == null) {
-        isTorus = false;
-      }
-      if (hasNeighbors == null) {
-        hasNeighbors = true;
-      }
-      if (isHeadless == null) {
-        isHeadless = false;
-      }
-      ABM.model = this;
-      if (typeof divOrOptions === 'string') {
-        div = divOrOptions;
-        this.setWorldDeprecated(size, minX, maxX, minY, maxY, isTorus, hasNeighbors, isHeadless);
-      } else {
-        div = divOrOptions.div;
-        isHeadless = divOrOptions.isHeadless = (divOrOptions.isHeadless != null) || (div == null);
-        this.setWorld(divOrOptions);
-      }
+    function Model(options) {
+      var context, div, isHeadless, key, value, _ref;
+      div = options.div;
+      isHeadless = options.isHeadless = (options.isHeadless != null) || (div == null);
+      this.setWorld(options);
       this.contexts = ABM.contexts = {};
       if (!isHeadless) {
         (this.div = document.getElementById(div)).setAttribute('style', "position:relative; width:" + this.world.pxWidth + "px; height:" + this.world.pxHeight + "px");
         _ref = this.contextsInit;
-        for (k in _ref) {
-          if (!__hasProp.call(_ref, k)) continue;
-          v = _ref[k];
-          this.contexts[k] = context = u.createLayer(this.div, this.world.pxWidth, this.world.pxHeight, v.z, v.context);
+        for (key in _ref) {
+          if (!__hasProp.call(_ref, key)) continue;
+          value = _ref[key];
+          this.contexts[key] = context = u.createLayer(this.div, this.world.pxWidth, this.world.pxHeight, value.z, value.context);
           if (context.canvas != null) {
             this.setContextTransform(context);
           }
@@ -2171,11 +2394,8 @@
     Model.prototype.setWorld = function(options) {
       var defaults, key, value;
       defaults = {
-        size: 13,
-        minX: -16,
-        maxX: 16,
-        minY: -16,
-        maxY: 16,
+        patchSize: 13,
+        mapSize: 32,
         isTorus: false,
         hasNeighbors: true,
         isHeadless: false
@@ -2187,49 +2407,36 @@
           options[key] = value;
         }
       }
+      if (options.min == null) {
+        options.min = {
+          x: -1 * options.mapSize / 2,
+          y: -1 * options.mapSize / 2
+        };
+      }
+      if (options.max == null) {
+        options.max = {
+          x: options.mapSize / 2,
+          y: options.mapSize / 2
+        };
+      }
+      options.mapSize = null;
       ABM.world = this.world = {};
       for (key in options) {
         if (!__hasProp.call(options, key)) continue;
         value = options[key];
         this.world[key] = value;
       }
-      this.world.numX = this.world.maxX - this.world.minX + 1;
-      this.world.numY = this.world.maxY - this.world.minY + 1;
-      this.world.pxWidth = this.world.numX * this.world.size;
-      this.world.pxHeight = this.world.numY * this.world.size;
-      this.world.minXcor = this.world.minX - .5;
-      this.world.maxXcor = this.world.maxX + .5;
-      this.world.minYcor = this.world.minY - .5;
-      return this.world.maxYcor = this.world.maxY + .5;
-    };
-
-    Model.prototype.setWorldDeprecated = function(size, minX, maxX, minY, maxY, isTorus, hasNeighbors, isHeadless) {
-      var maxXcor, maxYcor, minXcor, minYcor, numX, numY, pxHeight, pxWidth;
-      numX = maxX - minX + 1;
-      numY = maxY - minY + 1;
-      pxWidth = numX * size;
-      pxHeight = numY * size;
-      minXcor = minX - .5;
-      maxXcor = maxX + .5;
-      minYcor = minY - .5;
-      maxYcor = maxY + .5;
-      return ABM.world = this.world = {
-        size: size,
-        minX: minX,
-        maxX: maxX,
-        minY: minY,
-        maxY: maxY,
-        minXcor: minXcor,
-        maxXcor: maxXcor,
-        minYcor: minYcor,
-        maxYcor: maxYcor,
-        numX: numX,
-        numY: numY,
-        pxWidth: pxWidth,
-        pxHeight: pxHeight,
-        isTorus: isTorus,
-        hasNeighbors: hasNeighbors,
-        isHeadless: isHeadless
+      this.world.width = this.world.max.x - this.world.min.x + 1;
+      this.world.height = this.world.max.y - this.world.min.y + 1;
+      this.world.pxWidth = this.world.width * this.world.patchSize;
+      this.world.pxHeight = this.world.height * this.world.patchSize;
+      this.world.minCoordinate = {
+        x: this.world.min.x - .5,
+        y: this.world.min.y - .5
+      };
+      return this.world.maxCoordinate = {
+        x: this.world.max.x + .5,
+        y: this.world.max.y + .5
       };
     };
 
@@ -2237,8 +2444,8 @@
       context.canvas.width = this.world.pxWidth;
       context.canvas.height = this.world.pxHeight;
       context.save();
-      context.scale(this.world.size, -this.world.size);
-      return context.translate(-this.world.minXcor, -this.world.maxYcor);
+      context.scale(this.world.patchSize, -this.world.patchSize);
+      return context.translate(-this.world.minCoordinate.x, -this.world.maxCoordinate.y);
     };
 
     Model.prototype.globals = function(globalNames) {
@@ -2246,7 +2453,7 @@
         this.globalNames = globalNames;
         return this.globalNames.set = true;
       } else {
-        return this.globalNames = u.removeItems(u.ownKeys(this), this.globalNames);
+        return this.globalNames = u.ownKeys(this).removeItems(this.globalNames);
       }
     };
 
@@ -2256,10 +2463,6 @@
 
     Model.prototype.setMonochromePatches = function() {
       return this.patches.monochrome = true;
-    };
-
-    Model.prototype.setCacheMyLinks = function() {
-      return this.agents.cacheLinks();
     };
 
     Model.prototype.startup = function() {};
@@ -2400,13 +2603,6 @@
       return this.createBreeds(list, 'links', agentClass, breedSet);
     };
 
-    Model.prototype.asSet = function(a, setType) {
-      if (setType == null) {
-        setType = ABM.Set;
-      }
-      return ABM.Set.asSet(a, setType);
-    };
-
     Model.prototype.debug = function(debugging) {
       this.debugging = debugging != null ? debugging : true;
       u.waitOn(((function(_this) {
@@ -2447,9 +2643,7 @@
 
     Patch.prototype.breed = null;
 
-    Patch.prototype.x = null;
-
-    Patch.prototype.y = null;
+    Patch.prototype.position = null;
 
     Patch.prototype.color = [0, 0, 0];
 
@@ -2463,40 +2657,32 @@
 
     Patch.prototype.agents = null;
 
-    function Patch(x, y) {
-      this.x = x;
-      this.y = y;
+    function Patch(position) {
+      this.position = position;
       this.neighborsCache = {};
-      this.agents = [];
+      this.agents = new ABM.Array;
     }
 
     Patch.prototype.toString = function() {
-      return "{id:" + this.id + " xy:" + [this.x, this.y] + " c:" + this.color + "}";
-    };
-
-    Patch.prototype.fractionOfColor = function(color, fraction) {
-      if (!this.hasOwnProperty("color")) {
-        this.color = u.clone(this.color);
-      }
-      return u.fractionOfColor(color, fraction, this.color);
+      return ("{id:" + this.id + " position: {x: " + this.position.x + ", y: " + this.position.y + "},") + ("c: " + this.color + "}");
     };
 
     Patch.prototype.draw = function(context) {
-      var x, y, _ref;
+      var position;
       context.fillStyle = u.colorString(this.color);
-      context.fillRect(this.x - .5, this.y - .5, 1, 1);
+      context.fillRect(this.position.x - .5, this.position.y - .5, 1, 1);
       if (this.label != null) {
-        _ref = this.breed.patchXYtoPixelXY(this.x, this.y), x = _ref[0], y = _ref[1];
-        return u.contextDrawText(context, this.label, x + this.labelOffset[0], y + this.labelOffset[1], this.labelColor);
+        position = this.breed.patchXYtoPixelXY(this.position);
+        return u.contextDrawText(context, this.label, position.x + this.labelOffset[0], position.y + this.labelOffset[1], this.labelColor);
       }
     };
 
     Patch.prototype.empty = function() {
-      return u.empty(this.agents);
+      return this.agents.empty();
     };
 
     Patch.prototype.isOnEdge = function() {
-      return this.x === this.breed.minX || this.x === this.breed.maxX || this.y === this.breed.minY || this.y === this.breed.maxY;
+      return this.position.x === this.breed.min.x || this.position.x === this.breed.max.x || this.position.y === this.breed.min.y || this.position.y === this.breed.max.y;
     };
 
     Patch.prototype.sprout = function(number, breed, init) {
@@ -2511,7 +2697,7 @@
       }
       return breed.create(number, (function(_this) {
         return function(agent) {
-          agent.setXY(_this.x, _this.y);
+          agent.moveTo(_this.position);
           init(agent);
           return agent;
         };
@@ -2519,7 +2705,7 @@
     };
 
     Patch.prototype.distance = function(point) {
-      return u.distance(this, point, ABM.patches);
+      return u.distance(this.position, point, ABM.patches);
     };
 
     Patch.prototype.neighbors = function(options) {
@@ -2527,30 +2713,47 @@
       if (options == null) {
         options = 1;
       }
-      cacheKey = JSON.stringify(options);
-      neighbors = this.neighborsCache[cacheKey];
+      if (u.isNumber(options)) {
+        options = {
+          range: options
+        };
+      }
+      if ((options.cache == null) || options.cache) {
+        cacheKey = JSON.stringify(options);
+        neighbors = this.neighborsCache[cacheKey];
+      }
       if (neighbors == null) {
         if (options.radius) {
-          square = this.neighbors(options.radius);
+          square = this.neighbors({
+            range: options.radius,
+            meToo: options.meToo
+          }, {
+            cache: options.cache
+          });
           if (options.cone) {
-            neighbors = square.inCone(this, options);
+            neighbors = square.inCone(this.position, options);
+            if (!options.cache) {
+              cacheKey = null;
+            }
           } else {
-            neighbors = square.inRadius(this, options);
+            neighbors = square.inRadius(this.position, options);
           }
         } else if (options.diamond) {
-          neighbors = this.diamondNeighbors(options.diamond, options);
+          neighbors = this.diamondNeighbors(options.diamond, options.meToo);
         } else {
-          neighbors = this.breed.patchRectangle(this, options, options);
+          neighbors = this.breed.patchRectangle(this, options.range, options.range, options.meToo);
         }
-        this.neighborsCache[cacheKey] = neighbors;
+        if (cacheKey != null) {
+          this.neighborsCache[cacheKey] = neighbors;
+        }
       }
       return neighbors;
     };
 
-    Patch.prototype.diamondNeighbors = function(range) {
+    Patch.prototype.diamondNeighbors = function(range, meToo) {
       var column, counter, diamond, distanceColumn, distanceRow, neighbor, neighbors, row, span, _i, _len;
       neighbors = this.breed.patchRectangleNullPadded(this, range, range, true);
-      diamond = [];
+      diamond = new ABM.Set;
       counter = 0;
       row = 0;
       column = -1;
@@ -2563,13 +2766,13 @@
         }
         distanceColumn = Math.abs(column - range);
         distanceRow = Math.abs(row - range);
-        if (distanceRow + distanceColumn <= range && distanceRow + distanceColumn !== 0) {
+        if (distanceRow + distanceColumn <= range && (meToo || distanceRow + distanceColumn !== 0)) {
           diamond.push(neighbor);
         }
         counter += 1;
       }
-      u.remove(diamond, null);
-      return this.breed.asSet(diamond);
+      diamond.remove(null);
+      return diamond;
     };
 
     return Patch;
@@ -2593,9 +2796,12 @@
 
     Patches.prototype.create = function() {
       var x, y, _i, _j, _ref, _ref1, _ref2, _ref3;
-      for (y = _i = _ref = this.maxY, _ref1 = this.minY; _i >= _ref1; y = _i += -1) {
-        for (x = _j = _ref2 = this.minX, _ref3 = this.maxX; _j <= _ref3; x = _j += 1) {
-          this.add(new this.agentClass(x, y));
+      for (y = _i = _ref = this.max.y, _ref1 = this.min.y; _i >= _ref1; y = _i += -1) {
+        for (x = _j = _ref2 = this.min.x, _ref3 = this.max.x; _j <= _ref3; x = _j += 1) {
+          this.add(new this.agentClass({
+            x: x,
+            y: y
+          }));
         }
       }
       if (!this.isHeadless) {
@@ -2604,84 +2810,92 @@
       return this;
     };
 
-    Patches.prototype.usePixels = function(drawWithPixels) {
-      var context;
-      this.drawWithPixels = drawWithPixels != null ? drawWithPixels : true;
-      context = ABM.contexts.patches;
-      return u.setContextSmoothing(context, !this.drawWithPixels);
-    };
-
-    Patches.prototype.setPixels = function() {
-      if (this.size === 1) {
-        this.usePixels();
-        this.pixelsContext = ABM.contexts.patches;
+    Patches.prototype.patch = function(point) {
+      var coordinate, rounded;
+      if (this.isCoordinate(point, this.min, this.max)) {
+        coordinate = point;
       } else {
-        this.pixelsContext = u.createContext(this.numX, this.numY);
+        coordinate = this.coordinate(point, this.min, this.max);
       }
-      this.pixelsImageData = this.pixelsContext.getImageData(0, 0, this.numX, this.numY);
-      this.pixelsData = this.pixelsImageData.data;
-      if (this.pixelsData instanceof Uint8Array) {
-        this.pixelsData32 = new Uint32Array(this.pixelsData.buffer);
-        return this.pixelsAreLittleEndian = u.isLittleEndian();
+      rounded = {
+        x: Math.round(coordinate.x),
+        y: Math.round(coordinate.y)
+      };
+      return this[this.patchIndex(rounded)];
+    };
+
+    Patches.prototype.coordinate = function(point, minPoint, maxPoint) {
+      if (minPoint == null) {
+        minPoint = this.minCoordinate;
       }
-    };
-
-    Patches.prototype.draw = function(context) {
-      if (this.monochrome) {
-        return u.fillContext(context, this.agentClass.prototype.color);
-      } else if (this.drawWithPixels) {
-        return this.drawScaledPixels(context);
-      } else {
-        return Patches.__super__.draw.call(this, context);
+      if (maxPoint == null) {
+        maxPoint = this.maxCoordinate;
       }
-    };
-
-    Patches.prototype.patchIndex = function(x, y) {
-      return x - this.minX + this.numX * (this.maxY - y);
-    };
-
-    Patches.prototype.patchXY = function(x, y) {
-      return this[this.patchIndex(x, y)];
-    };
-
-    Patches.prototype.clamp = function(x, y) {
-      return [u.clamp(x, this.minXcor, this.maxXcor), u.clamp(y, this.minYcor, this.maxYcor)];
-    };
-
-    Patches.prototype.wrap = function(x, y) {
-      return [u.wrap(x, this.minXcor, this.maxXcor), u.wrap(y, this.minYcor, this.maxYcor)];
-    };
-
-    Patches.prototype.coord = function(x, y) {
       if (this.isTorus) {
-        return this.wrap(x, y);
+        return this.wrap(point, minPoint, maxPoint);
       } else {
-        return this.clamp(x, y);
+        return this.clamp(point, minPoint, maxPoint);
       }
     };
 
-    Patches.prototype.isOnWorld = function(x, y) {
-      return this.isTorus || ((this.minXcor <= x && x <= this.maxXcor) && (this.minYcor <= y && y <= this.maxYcor));
+    Patches.prototype.clamp = function(point, minPoint, maxPoint) {
+      if (minPoint == null) {
+        minPoint = this.minCoordinate;
+      }
+      if (maxPoint == null) {
+        maxPoint = this.maxCoordinate;
+      }
+      return {
+        x: u.clamp(point.x, minPoint.x, maxPoint.x),
+        y: u.clamp(point.y, minPoint.y, maxPoint.y)
+      };
     };
 
-    Patches.prototype.patch = function(x, y) {
-      var _ref;
-      _ref = this.coord(x, y), x = _ref[0], y = _ref[1];
-      x = u.clamp(Math.round(x), this.minX, this.maxX);
-      y = u.clamp(Math.round(y), this.minY, this.maxY);
-      return this.patchXY(x, y);
+    Patches.prototype.wrap = function(point, minPoint, maxPoint) {
+      if (minPoint == null) {
+        minPoint = this.minCoordinate;
+      }
+      if (maxPoint == null) {
+        maxPoint = this.maxCoordinate;
+      }
+      return {
+        x: u.wrap(point.x, minPoint.x, maxPoint.x),
+        y: u.wrap(point.y, minPoint.y, maxPoint.y)
+      };
+    };
+
+    Patches.prototype.isCoordinate = function(point, minPoint, maxPoint) {
+      var _ref, _ref1;
+      if (minPoint == null) {
+        minPoint = this.minCoordinate;
+      }
+      if (maxPoint == null) {
+        maxPoint = this.maxCoordinate;
+      }
+      return (minPoint.x <= (_ref = point.x) && _ref <= maxPoint.x) && (minPoint.y <= (_ref1 = point.y) && _ref1 <= maxPoint.y);
+    };
+
+    Patches.prototype.isOnWorld = function(point) {
+      return this.isTorus || this.isCoordinate(point);
+    };
+
+    Patches.prototype.patchIndex = function(point) {
+      return point.x - this.min.x + this.width * (this.max.y - point.y);
     };
 
     Patches.prototype.randomPoint = function() {
-      return [u.randomFloat(this.minXcor, this.maxXcor), u.randomFloat(this.minYcor, this.maxYcor)];
+      return {
+        x: u.randomFloat(this.minCoordinate.x, this.maxCoordinate.x),
+        y: u.randomFloat(this.minCoordinate.y, this.maxCoordinate.y)
+      };
     };
 
     Patches.prototype.toBits = function(patch) {
-      return patch * this.size;
+      return patch * this.patchSize;
     };
 
-    Patches.prototype.fromBits = function(b) {
-      return b / this.size;
+    Patches.prototype.fromBits = function(bit) {
+      return bit / this.patchSize;
     };
 
     Patches.prototype.patchRectangle = function(patch, dx, dy, meToo) {
@@ -2690,7 +2904,7 @@
         meToo = false;
       }
       rectangle = this.patchRectangleNullPadded(patch, dx, dy, meToo);
-      return u.remove(rectangle, null);
+      return rectangle.remove(null);
     };
 
     Patches.prototype.patchRectangleNullPadded = function(patch, dx, dy, meToo) {
@@ -2698,33 +2912,39 @@
       if (meToo == null) {
         meToo = false;
       }
-      rectangle = [];
-      for (y = _i = _ref = patch.y - dy, _ref1 = patch.y + dy; _i <= _ref1; y = _i += 1) {
-        for (x = _j = _ref2 = patch.x - dx, _ref3 = patch.x + dx; _j <= _ref3; x = _j += 1) {
+      rectangle = new ABM.Set;
+      for (y = _i = _ref = patch.position.y - dy, _ref1 = patch.position.y + dy; _i <= _ref1; y = _i += 1) {
+        for (x = _j = _ref2 = patch.position.x - dx, _ref3 = patch.position.x + dx; _j <= _ref3; x = _j += 1) {
           nextPatch = null;
           if (this.isTorus) {
-            if (x < this.minX) {
-              x += this.numX;
+            if (x < this.min.x) {
+              x += this.width;
             }
-            if (x > this.maxX) {
-              x -= this.numX;
+            if (x > this.max.x) {
+              x -= this.width;
             }
-            if (y < this.minY) {
-              y += this.numY;
+            if (y < this.min.y) {
+              y += this.height;
             }
-            if (y > this.maxY) {
-              y -= this.numY;
+            if (y > this.max.y) {
+              y -= this.height;
             }
-            nextPatch = this.patchXY(x, y);
-          } else if (x >= this.minX && x <= this.maxX && y >= this.minY && y <= this.maxY) {
-            nextPatch = this.patchXY(x, y);
+            nextPatch = this.patch({
+              x: x,
+              y: y
+            });
+          } else if (x >= this.min.x && x <= this.max.x && y >= this.min.y && y <= this.max.y) {
+            nextPatch = this.patch({
+              x: x,
+              y: y
+            });
           }
           if (meToo || patch !== nextPatch) {
             rectangle.push(nextPatch);
           }
         }
       }
-      return this.asSet(rectangle);
+      return rectangle;
     };
 
     Patches.prototype.importDrawing = function(imageSrc, f) {
@@ -2756,11 +2976,11 @@
     };
 
     Patches.prototype.pixelXYtoPatchXY = function(x, y) {
-      return [this.minXcor + (x / this.size), this.maxYcor - (y / this.size)];
+      return [this.minCoordinate.x + (x / this.patchSize), this.maxCoordinate.y - (y / this.patchSize)];
     };
 
     Patches.prototype.patchXYtoPixelXY = function(x, y) {
-      return [(x - this.minXcor) * this.size, (this.maxYcor - y) * this.size];
+      return [(x - this.minCoordinate.x) * this.patchSize, (this.maxCoordinate.y - y) * this.patchSize];
     };
 
     Patches.prototype.importColors = function(imageSrc, f, map) {
@@ -2777,8 +2997,8 @@
     Patches.prototype.installColors = function(img, map) {
       var data, i, patch, _i, _len;
       u.setIdentity(this.pixelsContext);
-      this.pixelsContext.drawImage(img, 0, 0, this.numX, this.numY);
-      data = this.pixelsContext.getImageData(0, 0, this.numX, this.numY).data;
+      this.pixelsContext.drawImage(img, 0, 0, this.width, this.height);
+      data = this.pixelsContext.getImageData(0, 0, this.width, this.height).data;
       for (_i = 0, _len = this.length; _i < _len; _i++) {
         patch = this[_i];
         i = this.pixelByteIndex(patch);
@@ -2788,7 +3008,7 @@
     };
 
     Patches.prototype.drawScaledPixels = function(context) {
-      if (this.size !== 1) {
+      if (this.patchSize !== 1) {
         u.setIdentity(context);
       }
       if (this.pixelsData32 != null) {
@@ -2796,7 +3016,7 @@
       } else {
         this.drawScaledPixels8(context);
       }
-      if (this.size !== 1) {
+      if (this.patchSize !== 1) {
         return context.restore();
       }
     };
@@ -2819,7 +3039,7 @@
         data[i + 3] = a;
       }
       this.pixelsContext.putImageData(this.pixelsImageData, 0, 0);
-      if (this.size === 1) {
+      if (this.patchSize === 1) {
         return;
       }
       return context.drawImage(this.pixelsContext.canvas, 0, 0, context.canvas.width, context.canvas.height);
@@ -2840,7 +3060,7 @@
         }
       }
       this.pixelsContext.putImageData(this.pixelsImageData, 0, 0);
-      if (this.size === 1) {
+      if (this.patchSize === 1) {
         return;
       }
       return context.drawImage(this.pixelsContext.canvas, 0, 0, context.canvas.width, context.canvas.height);
@@ -2883,272 +3103,47 @@
         patch[v] = patch._diffuseNext;
         patch._diffuseNext = 0;
         if (c) {
-          patch.fractionOfColor(c, patch[v]);
+          patch.color = u.fractionOfColor(c, patch[v]);
         }
       }
       return null;
+    };
+
+    Patches.prototype.usePixels = function(drawWithPixels) {
+      var context;
+      this.drawWithPixels = drawWithPixels != null ? drawWithPixels : true;
+      context = ABM.contexts.patches;
+      return u.setContextSmoothing(context, !this.drawWithPixels);
+    };
+
+    Patches.prototype.setPixels = function() {
+      if (this.patchSize === 1) {
+        this.usePixels();
+        this.pixelsContext = ABM.contexts.patches;
+      } else {
+        this.pixelsContext = u.createContext(this.width, this.height);
+      }
+      this.pixelsImageData = this.pixelsContext.getImageData(0, 0, this.width, this.height);
+      this.pixelsData = this.pixelsImageData.data;
+      if (this.pixelsData instanceof Uint8Array) {
+        this.pixelsData32 = new Uint32Array(this.pixelsData.buffer);
+        return this.pixelsAreLittleEndian = u.isLittleEndian();
+      }
+    };
+
+    Patches.prototype.draw = function(context) {
+      if (this.monochrome) {
+        return u.fillContext(context, this.agentClass.prototype.color);
+      } else if (this.drawWithPixels) {
+        return this.drawScaledPixels(context);
+      } else {
+        return Patches.__super__.draw.call(this, context);
+      }
     };
 
     return Patches;
 
-  })(ABM.Set);
-
-  ABM.shapes = ABM.util.s = (function() {
-    var ccirc, cimg, circ, csq, fillSlot, poly, spriteSheets;
-    poly = function(c, a) {
-      var i, p, _i, _len;
-      for (i = _i = 0, _len = a.length; _i < _len; i = ++_i) {
-        p = a[i];
-        if (i === 0) {
-          c.moveTo(p[0], p[1]);
-        } else {
-          c.lineTo(p[0], p[1]);
-        }
-      }
-      return null;
-    };
-    circ = function(c, x, y, s) {
-      return c.arc(x, y, s / 2, 0, 2 * Math.PI);
-    };
-    ccirc = function(c, x, y, s) {
-      return c.arc(x, y, s / 2, 0, 2 * Math.PI, true);
-    };
-    cimg = function(c, x, y, s, img) {
-      c.scale(1, -1);
-      c.drawImage(img, x - s / 2, y - s / 2, s, s);
-      return c.scale(1, -1);
-    };
-    csq = function(c, x, y, s) {
-      return c.fillRect(x - s / 2, y - s / 2, s, s);
-    };
-    fillSlot = function(slot, img) {
-      slot.context.save();
-      slot.context.scale(1, -1);
-      slot.context.drawImage(img, slot.x, -(slot.y + slot.bits), slot.bits, slot.bits);
-      return slot.context.restore();
-    };
-    spriteSheets = [];
-    return {
-      "default": {
-        rotate: true,
-        draw: function(c) {
-          return poly(c, [[.5, 0], [-.5, -.5], [-.25, 0], [-.5, .5]]);
-        }
-      },
-      triangle: {
-        rotate: true,
-        draw: function(c) {
-          return poly(c, [[.5, 0], [-.5, -.4], [-.5, .4]]);
-        }
-      },
-      arrow: {
-        rotate: true,
-        draw: function(c) {
-          return poly(c, [[.5, 0], [0, .5], [0, .2], [-.5, .2], [-.5, -.2], [0, -.2], [0, -.5]]);
-        }
-      },
-      bug: {
-        rotate: true,
-        draw: function(c) {
-          c.strokeStyle = c.fillStyle;
-          c.lineWidth = .05;
-          poly(c, [[.4, .225], [.2, 0], [.4, -.225]]);
-          c.stroke();
-          c.beginPath();
-          circ(c, .12, 0, .26);
-          circ(c, -.05, 0, .26);
-          return circ(c, -.27, 0, .4);
-        }
-      },
-      pyramid: {
-        rotate: false,
-        draw: function(c) {
-          return poly(c, [[0, .5], [-.433, -.25], [.433, -.25]]);
-        }
-      },
-      circle: {
-        shortcut: function(c, x, y, s) {
-          c.beginPath();
-          circ(c, x, y, s);
-          c.closePath();
-          return c.fill();
-        },
-        rotate: false,
-        draw: function(c) {
-          return circ(c, 0, 0, 1);
-        }
-      },
-      square: {
-        shortcut: function(c, x, y, s) {
-          return csq(c, x, y, s);
-        },
-        rotate: false,
-        draw: function(c) {
-          return csq(c, 0, 0, 1);
-        }
-      },
-      pentagon: {
-        rotate: false,
-        draw: function(c) {
-          return poly(c, [[0, .45], [-.45, .1], [-.3, -.45], [.3, -.45], [.45, .1]]);
-        }
-      },
-      ring: {
-        rotate: false,
-        draw: function(c) {
-          circ(c, 0, 0, 1);
-          c.closePath();
-          return ccirc(c, 0, 0, .6);
-        }
-      },
-      person: {
-        rotate: false,
-        draw: function(c) {
-          poly(c, [[.15, .2], [.3, 0], [.125, -.1], [.125, .05], [.1, -.15], [.25, -.5], [.05, -.5], [0, -.25], [-.05, -.5], [-.25, -.5], [-.1, -.15], [-.125, .05], [-.125, -.1], [-.3, 0], [-.15, .2]]);
-          c.closePath();
-          return circ(c, 0, .35, .30);
-        }
-      },
-      names: function() {
-        var name, val, _results;
-        _results = [];
-        for (name in this) {
-          if (!__hasProp.call(this, name)) continue;
-          val = this[name];
-          if ((val.rotate != null) && (val.draw != null)) {
-            _results.push(name);
-          }
-        }
-        return _results;
-      },
-      add: function(name, rotate, draw, shortcut) {
-        var s;
-        if (u.isFunction(draw)) {
-          s = {
-            rotate: rotate,
-            draw: draw
-          };
-        } else {
-          s = {
-            rotate: rotate,
-            img: draw,
-            draw: function(c) {
-              return cimg(c, .5, .5, 1, this.img);
-            }
-          };
-        }
-        this[name] = s;
-        if (shortcut != null) {
-          return s.shortcut = shortcut;
-        } else if ((s.img != null) && !s.rotate) {
-          return s.shortcut = function(c, x, y, s) {
-            return cimg(c, x, y, s, this.img);
-          };
-        }
-      },
-      poly: poly,
-      circ: circ,
-      ccirc: ccirc,
-      cimg: cimg,
-      csq: csq,
-      spriteSheets: spriteSheets,
-      draw: function(context, shape, x, y, size, rad, color) {
-        if (shape.shortcut != null) {
-          if (shape.img == null) {
-            context.fillStyle = u.colorString(color);
-          }
-          shape.shortcut(context, x, y, size);
-        } else {
-          context.save();
-          context.translate(x, y);
-          if (size !== 1) {
-            context.scale(size, size);
-          }
-          if (rad !== 0) {
-            context.rotate(rad);
-          }
-          if (shape.img != null) {
-            shape.draw(context);
-          } else {
-            context.fillStyle = u.colorString(color);
-            context.beginPath();
-            shape.draw(context);
-            context.closePath();
-            context.fill();
-          }
-          context.restore();
-        }
-        return shape;
-      },
-      drawSprite: function(context, s, x, y, size, rad) {
-        if (rad === 0) {
-          context.drawImage(s.context.canvas, s.x, s.y, s.bits, s.bits, x - size / 2, y - size / 2, size, size);
-        } else {
-          context.save();
-          context.translate(x, y);
-          context.rotate(rad);
-          context.drawImage(s.context.canvas, s.x, s.y, s.bits, s.bits, -size / 2, -size / 2, size, size);
-          context.restore();
-        }
-        return s;
-      },
-      shapeToSprite: function(name, color, size) {
-        var bits, context, foundSlot, img, index, shape, slot, x, y;
-        bits = Math.ceil(ABM.patches.toBits(size));
-        shape = this[name];
-        index = shape.img != null ? name : "" + name + "-" + (u.colorString(color));
-        context = spriteSheets[bits];
-        if (context == null) {
-          spriteSheets[bits] = context = u.createContext(bits * 10, bits);
-          context.nextX = 0;
-          context.nextY = 0;
-          context.index = {};
-        }
-        if ((foundSlot = context.index[index]) != null) {
-          return foundSlot;
-        }
-        if (bits * context.nextX === context.canvas.width) {
-          u.resizeContext(context, context.canvas.width, context.canvas.height + bits);
-          context.nextX = 0;
-          context.nextY++;
-        }
-        x = bits * context.nextX;
-        y = bits * context.nextY;
-        slot = {
-          context: context,
-          x: x,
-          y: y,
-          size: size,
-          bits: bits,
-          name: name,
-          color: color,
-          index: index
-        };
-        context.index[index] = slot;
-        if ((img = shape.img) != null) {
-          if (img.height !== 0) {
-            fillSlot(slot, img);
-          } else {
-            img.onload = function() {
-              return fillSlot(slot, img);
-            };
-          }
-        } else {
-          context.save();
-          context.scale(bits, bits);
-          context.translate(context.nextX + .5, context.nextY + .5);
-          context.fillStyle = u.colorString(color);
-          context.beginPath();
-          shape.draw(context);
-          context.closePath();
-          context.fill();
-          context.restore();
-        }
-        context.nextX++;
-        return slot;
-      }
-    };
-  })();
+  })(ABM.BreedSet);
 
 }).call(this);
 
